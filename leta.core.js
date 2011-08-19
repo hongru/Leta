@@ -7,22 +7,103 @@
  */
  
 (function () {
-    var isUndefined = function (o) {
-        return typeof o === 'undefined';
-    }
-    var Leta = isUndefined(Leta) ? {} : Leta;
+
+    var root = this;
+    
+    var arrayProto = Array.prototype,
+        objProto = Object.prototype,
+        slice = arrayProto.slice,
+        toString = objProto.toString,
+        hasOwnProperty = objProto.hasOwnProperty;
+        
+    // native method
+    var nativeIsArray = Array.isArray,
+        nativeKeys = Object.keys;
+    
+    // isSth.
+    var _ = {};
+	/**
+	 * ä»¥ä¸‹åˆ¤æ–­å¤šç”¨ç‰¹æ€§ç›‘æµ‹ï¼Œè€Œæ²¡ç”¨typeofçš„æ–¹å¼
+	 */
+    _.isUndefined = function (o) {
+        return o === void 0;
+    };
+	_.isNull = function (o) {
+		return o === null;
+	}
+	_.isArray = nativeIsArray || function (o) {
+		return toString.call(o) === '[object Array]';
+	}
+	/**
+	 * Method åˆ¤æ–­æ˜¯å¦ä¸ºç©º
+	 * å¯ç”¨äºObject {} æˆ– Array []
+	 */
+	_.isEmpty = function (o) {
+		if (_.isArray(o) || _.isString(o)) {
+			return o.length === 0;
+		}
+		for (var key in o) {
+			if (hasOwnProperty.call(o, key)) {
+				return false;
+			}
+		}
+		return true;
+	}
+	_.isString = function (o) {
+		return !!(o === '' || (o && o.charCodeAt && o.substr));	
+	}
+	/**
+	 * Method åˆ¤æ–­æ˜¯å¦ä¸ºObject
+	 * {}, [] , function(){}  éƒ½ä¼šè¿”å›true
+	 */
+	_.isObject = function (o) {
+		return o === Object(o);
+	}
+	_.isElement = function (o) {
+		return !!(o && o.nodeType === 1);
+	}
+	_.isArguments = function (o) {
+		return !!(o && hasOwnProperty.call(o, 'callee'));
+	}
+	_.isFunction = function (o) {
+		return !!(o && o.constructor && o.call && o.apply);
+	}
+	/**
+	 * åˆ¤æ–­NaNï¼Œæœ‰ä¸ªç‰¹æ€§ï¼ŒNaNä¸ä¼šç­‰äºè‡ªèº«
+	 * NaN ä¹Ÿå±äºnumber
+	 */
+	_.isNaN = function (o) {
+		return o !== o;
+	}
+	_.isNumber = function (o) {
+		return !!(o === 0 || (o && o.toFixed && o.toExponential));
+	}
+	_.isBoolean = function (o) {
+		return (o === false || o === true);
+	}
+	/**
+	 * åŠ ä¸ŠignoreCaseçš„æƒ…å†µï¼Œé˜²æ­¢æœ‰è‡ªå®šä¹‰å¯¹è±¡å­˜åœ¨testå’Œexecæ–¹æ³•
+	 */
+	_.isRegExp = function (o) {
+		return !!(o && o.test && o.exec && (o.ignoreCase || o.ignoreCase === false));
+	}
+
+    
+    var Leta = _.isUndefined(Leta) ? {} : Leta;
 
     /**
-     * Method Ê¹ÓÃÄ£¿éµÄÖ÷º¯Êı
-     * @param (String or Array) ÒªÊ¹ÓÃµÄÄ£¿éÃû
-     * @param (Function) *optional ¼ÓÔØÄ£¿éºóµÄ»Øµ÷º¯Êı
-     * @param (Object) *optional »Øµ÷°ó¶¨¶ÔÏó
+     * Method ä½¿ç”¨æ¨¡å—çš„ä¸»å‡½æ•°
+     * @param (String or Array) è¦ä½¿ç”¨çš„æ¨¡å—å
+     * @param (Function) *optional åŠ è½½æ¨¡å—åçš„å›è°ƒå‡½æ•°
+     * @param (Object) *optional å›è°ƒç»‘å®šå¯¹è±¡
      * @return undefined
+     * xhråŒæ­¥çš„æ–¹å¼ç”±äºhttpè¯·æ±‚ï¼Œæš‚ä¸èƒ½æ”¯æŒè·¨åŸŸæ¨¡å—loader
+     * é»˜è®¤registerä¸ºå¼‚æ­¥
     **/ 
     var _module = function (moduleName, callback, context) {
         var argIndex=-1;
         
-        // private method ¼à²âmoduleName,Èç¹ûÊÇurl(http://*)Â·¾¶ĞÎÊ½£¬registerºóload
+        // private method ç›‘æµ‹moduleName,å¦‚æœæ˜¯url(http://*)è·¯å¾„å½¢å¼ï¼Œregisteråload
             function checkURL(src) {
                 var dsrc = src;
                 if (src && src.substring(0, 4) == "url(") {
@@ -32,10 +113,10 @@
                 return (!r && (!_module.__checkURLs || !_module.__checkURLs[dsrc]) && src && src.length > 4 && src.substring(0, 4) == "url(");
             }
             
-        // ²¢·¢µ÷ÓÃµÄÄ£¿éÁĞ±í
+        // å¹¶å‘è°ƒç”¨çš„æ¨¡å—åˆ—è¡¨
         var moduleNames = new Array();
         
-        if (typeof(moduleName) != "string" && moduleName.length) {
+        if (_.isArray(moduleName)) {
             var _moduleNames = moduleName;
             for (var s=0;s<_moduleNames.length; s++) {
                 if (_module.registered[_moduleNames[s]] || checkURL(_moduleNames[s])) {
@@ -61,9 +142,9 @@
             }
         }
         
-        // ÒÑ¾­register¹ıµÄÄ£¿éhash
+        // å·²ç»registerè¿‡çš„æ¨¡å—hash
         var reg = _module.registered[moduleName];
-        // ´¦ÀíÖ±½ÓÊ¹ÓÃurlµÄÇé¿ö
+        // å¤„ç†ç›´æ¥ä½¿ç”¨urlçš„æƒ…å†µ
         if (!_module.__checkURLs) _module.__checkURLs = {};
         if (checkURL(moduleName) && moduleName.substring(0, 4) == "url(") {
             moduleName = moduleName.substring(4, moduleName.length - 1);
@@ -83,7 +164,7 @@
         }
         
         if (reg) {
-            // ÏÈ´¦Àí±»ÒÀÀµµÄÄ£¿é
+            // å…ˆå¤„ç†è¢«ä¾èµ–çš„æ¨¡å—
             for (var r=reg.requirements.length-1; r>=0; r--) {
                 if (_module.registered[reg.requirements[r].name]) {
                     _module(reg.requirements[r].name, function() {
@@ -93,16 +174,16 @@
                 }
             }
             
-            // loadÃ¿¸öÄ£¿é
+            // loadæ¯ä¸ªæ¨¡å—
             for (var u=0; u<reg.urls.length; u++) {
                 if (u == reg.urls.length - 1) {
                     if (callback) {
-                        _module.load(reg.name, reg.urls[u], reg.asyncWait, new _module.prototype.curCallBack(callback, context));
+                        _module.load(reg.name, reg.urls[u], reg.isAsyn, reg.asyncWait, new _module.prototype.curCallBack(callback, context));
                     } else {
-                        _module.load(reg.name, reg.urls[u], reg.asyncWait);
+                        _module.load(reg.name, reg.urls[u], reg.isAsyn, reg.asyncWait);
                     }
                 } else {
-                    _module.load(reg.name, reg.urls[u], reg.asyncWait);
+                    _module.load(reg.name, reg.urls[u], reg.isAsyn, reg.asyncWait);
                 }
             }
             
@@ -114,19 +195,19 @@
     _module.prototype = {
 
         /**
-         * Method Ä£¿é×¢²á
-         * @param (String or Object) ×¢²áµÄÄ£¿éÃû»òÕß¶ÔÏó×ÖÃæÁ¿
-         * @param (Number) *optional Òì²½µÈ´ıÊ±¼ä
-         * @param (String or Array) ×¢²áÄ£¿é¶ÔÓ¦µÄurlµØÖ·
-         * @return (Object) ×¢²áÄ£¿éµÄÏà¹ØĞÅÏ¢¶ÔÏó×ÖÃæÁ¿
+         * Method æ¨¡å—æ³¨å†Œ
+         * @param (String or Object) æ³¨å†Œçš„æ¨¡å—åæˆ–è€…å¯¹è±¡å­—é¢é‡
+         * @param (Number) *optional å¼‚æ­¥ç­‰å¾…æ—¶é—´
+         * @param (String or Array) æ³¨å†Œæ¨¡å—å¯¹åº”çš„urlåœ°å€
+         * @return (Object) æ³¨å†Œæ¨¡å—çš„ç›¸å…³ä¿¡æ¯å¯¹è±¡å­—é¢é‡
         **/
-        register : function(name, asyncWait, urls) {
+        register : function(name, isAsyn, asyncWait, urls) {
             var reg;
-            if (typeof(name) == "object") {
+            if (_.isObject(name)) {
                 reg = name;
-                reg = new _module.prototype.__register(reg.name, reg.asyncWait, urls);
+                reg = new _module.prototype.__register(reg.name, reg.isAsyn, reg.asyncWait, urls);
             } else {
-                reg = new _module.prototype.__register(name, asyncWait, urls);
+                reg = new _module.prototype.__register(name, isAsyn, asyncWait, urls);
             }
             if (!_module.registered) _module.registered = { };
             if (_module.registered[name] && window.console) {
@@ -135,13 +216,25 @@
             _module.registered[name] = reg;
             return reg;
         },
-        // -- ×¢²áÄ£¿éµÄĞĞ¶¯º¯Êı£¬²¢Ìá¹©Á´Ê½µ÷ÓÃ
-        __register : function(_name, _asyncWait, _urls) {
+        // -- æ³¨å†Œæ¨¡å—çš„è¡ŒåŠ¨å‡½æ•°ï¼Œå¹¶æä¾›é“¾å¼è°ƒç”¨
+        __register : function(_name, _isAsyn, _asyncWait, _urls) {
             this.name = _name;
             var a=0;
             var arg = arguments[++a];
-
-            if (arg && typeof(arg) == "number") { this.asyncWait = _asyncWait } else { this.asyncWait = 0 }
+            
+            if (arg && typeof arg == 'boolean') {
+                this.isAsyn = arg;
+                arg = arguments[++a];
+            } else {
+                this.isAsyn = true;
+            }
+            
+            if (arg && typeof(arg) == "number") { 
+                this.asyncWait = _asyncWait; 
+            } else { 
+                this.asyncWait = 0; 
+            }
+            
             this.urls = new Array();
             if (arg && arg.length && typeof(arg) != "string") {
                 this.urls = arg;
@@ -150,23 +243,23 @@
                     if (arguments[a] && typeof(arguments[a]) == "string") this.urls.push(arguments[a]);
                 }
             }
-            // ÒÀÀµÁĞ±í
+            // ä¾èµ–åˆ—è¡¨
             this.requirements = new Array();
             
             this.require = function(resourceName) {
                 this.requirements.push({ name: resourceName });
                 return this;
             }
-            this.register = function(name, asyncWait, urls) {
-                return _module.register(name, asyncWait, urls);
+            this.register = function(name, isAsyn, asyncWait, urls) {
+                return _module.register(name, isAsyn, asyncWait, urls);
             }
             return this;
         },
 
         defaultAsyncTime: 10,
         
-        // -- ´¦Àí¼ÓÔØÄ£¿éÂß¼­
-        load: function(moduleName, scriptUrl, asyncWait, cb) {
+        // -- å¤„ç†åŠ è½½æ¨¡å—é€»è¾‘
+        load: function(moduleName, scriptUrl, isAsyn, asyncWait, cb) {
             if (asyncWait == undefined) asyncWait = _module.defaultAsyncTime;
             
             if (!_module.loadedscripts) _module.loadedscripts = new Array();
@@ -180,22 +273,53 @@
                  callbackQueue.push(cb);
                  if (callbackQueue.length > 2) return;
              }
-            
-             _module.loadScript(scriptUrl, asyncWait, callbackQueue);
+             
+             if (isAsyn) {
+                _module.asynLoadScript(scriptUrl, asyncWait, callbackQueue);
+             } else {
+                _module.xhrLoadScript(moduleName, scriptUrl, callbackQueue);
+             }
         }, 
         
-        // -- ¼ÓÔØÄ£¿éĞĞ¶¯º¯Êı
-        loadScript : function(scriptUrl, asyncWait, callbackQueue) {
+        xhrLoadScript: function (moduleName, scriptUrl, callbackQueue) {
+            var xhr;
+            if (window.XMLHttpRequest)
+				xhr = new XMLHttpRequest();
+			else if (window.ActiveXObject) {
+				xhr = new ActiveXObject("Microsoft.XMLHTTP"); 
+			}
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState == 4 && xhr.status == 200) {
+                    _module.injectScript(xhr.responseText, moduleName);
+                    if (callbackQueue) {
+                        for (var q=0; q<callbackQueue.length; q++) {
+                            callbackQueue[q].runCallback();
+                        }
+                    }
+                    _module.__callbackQueue[scriptUrl] = undefined;
+                }
+            }
+            
+            if (callbackQueue.length > 1) {
+                xhr.open("GET", scriptUrl, true);
+            } else {
+                xhr.open("GET", scriptUrl, false);
+            }
+            xhr.send(null);
+        },
+        
+        // -- åŠ è½½æ¨¡å—è¡ŒåŠ¨å‡½æ•°
+        asynLoadScript : function(scriptUrl, asyncWait, callbackQueue) {
             var scriptNode = _module.prototype.createScriptNode();
             scriptNode.setAttribute("src", scriptUrl);
             if (callbackQueue) {
-                // Ö´ĞĞcallback¶ÓÁĞ
+                // æ‰§è¡Œcallbacké˜Ÿåˆ—
                 var execQueue = function() {
                     _module.__callbackQueue[scriptUrl] = undefined;
                     for (var q=0; q<callbackQueue.length; q++) {
                         callbackQueue[q].runCallback();
                     }
-                    // ÖØÖÃcallback¶ÓÁĞ
+                    // é‡ç½®callbacké˜Ÿåˆ—
                     callbackQueue = new Array(); 
                 }
                 scriptNode.onload = scriptNode.onreadystatechange = function() {
@@ -208,7 +332,7 @@
             headNode.appendChild(scriptNode);
         },    
         
-        // -- Ö´ĞĞµ±Ç° callback
+        // -- æ‰§è¡Œå½“å‰ callback
         curCallBack : function(_callback, _context) {
             this.callback = _callback;
             this.context = _context;
@@ -216,7 +340,7 @@
                 !!this.context ? this.callback.call(this.context) : this.callback();
             };
         },
-        // -- »ñÈ¡callbackÁĞ±í
+        // -- è·å–callbackåˆ—è¡¨
         getCallbackQueue: function(scriptUrl) {
             if (!_module.__callbackQueue) _module.__callbackQueue = {};    
              var callbackQueue = _module.__callbackQueue[scriptUrl];        
@@ -229,21 +353,65 @@
             scriptNode.setAttribute("type", "text/javascript");
             scriptNode.setAttribute("language", "Javascript");
             return scriptNode;    
+        },
+        injectScript: function (scriptText, scriptName) {
+            var scriptNode = _module.prototype.createScriptNode();
+            try {
+                scriptNode.setAttribute("name", scriptName);
+            } catch (err) { }
+            scriptNode.text = scriptText;
+            var headNode = document.getElementsByTagName("head")[0];
+            headNode.appendChild(scriptNode);
         }
         
     }
-    // Ìá¹©¾²Ì¬·½·¨
+    // æä¾›é™æ€æ–¹æ³•
     _module.register = _module.prototype.register;
     _module.load = _module.prototype.load;
     _module.defaultAsyncTime = _module.prototype.defaultAsyncTime;
-    _module.loadScript = _module.prototype.loadScript;
+    _module.asynLoadScript = _module.prototype.asynLoadScript;
+    _module.xhrLoadScript = _module.prototype.xhrLoadScript;
+    
+    /**
+     * æ¨¡å—å¹¶å‘ï¼ˆç¡®è®¤å¹¶å‘æ¨¡å—é—´æ²¡æœ‰ä¾èµ–å…³ç³»ï¼‰ã€‚å¯ä»¥ä»£æ›¿å¦‚ä¸‹ï¼š
+     * Leta.module('a');
+     * Leta.module('b');
+     * --> Leta.multiModule('a','b') or Leta.multiModule(['a', 'b'])
+     * æœ¬æ–¹æ³•æš‚åªæä¾›â€œç»„å›è°ƒâ€ï¼Œæ¯ä¸ªå¹¶å‘æ¨¡å—ä¹Ÿæœ‰å›è°ƒçš„è¯·åˆ†å¼€å†™
+     * 
+     */
+    var multiModule = function (moduleNames, cb, context) {
+        var argInd = -1,
+			loadSuccNum = 0,
+            moduleArr = [];
+       	if (_.isArray(moduleNames)) {
+			moduleArr = moduleNames;
+		} else {
+			while (_.isString(arguments[++argInd])) {
+				moduleArr.push(arguments[argInd]);
+			}
+			cb = arguments[argInd];
+			context = arguments[++argInd];
+		}
+        for (var i=0, l=moduleArr.length; i < l; i++) {
+			_module(moduleArr[i], function () {
+						loadSuccNum ++;
+						//alert(loadSuccNum);
+					})
+		}
+    }
     
     /**
      * extend [Method]
+	 * @param {Object} ç›®æ ‡å¯¹è±¡
+	 * @param {Object} æºå¯¹è±¡
+	 * @param {boolean} æ˜¯å¦overwrite
+	 * å‚æ•°ä¸ªæ•°ä¸º1çš„æ—¶å€™é»˜è®¤targetä¸ºLetaï¼Œ
+	 * æ¥å—ç¬¬ä¸‰ä¸ªå‚æ•°ï¼Œæ˜¯å¦è¦†ç›–targetå·²æœ‰å±æ€§æ–¹æ³•
      */
     Leta.extend = function () {
         var target, source, args = arguments, isOverwrite = args[2];
-        if (isUndefined(isOverwrite)) {
+        if (_.isUndefined(isOverwrite)) {
             isOverwrite = true;
         }
         if (args.length === 1) {
@@ -260,10 +428,30 @@
         }
         return target;
     }
+	/**
+	 * deepExtend Method
+	 * @param {Object} ç›®æ ‡å¯¹è±¡
+	 * @param {Object} æºå¯¹è±¡
+	 * @param {boolean} æ˜¯å¦è¦†ç›–
+	 */
+	Leta.deepExtend = function () {
+	
+	};
+	/**
+	 * æŠŠç¬¬ä¸€ä¸ªå¯¹è±¡ä½œä¸ºtargetï¼Œå…¶ä½™éƒ½æ˜¯sourceï¼Œåˆå¹¶åˆ°target
+	 * åªæä¾›æµ…æ‹·è´
+	 */
+	Leta.multiExtend = function (target, source) {
+		for (var i = 1; i < arguments.length; i ++) {
+			Leta.extend(target, arguments[i])
+		}
+		return target;
+	}
     
-    Leta.extend({
-        module: _module
-    })
+    Leta.multiExtend(Leta, {
+        module: _module,
+		multiModule: multiModule
+    }, _)
     
     window.Leta = Leta;
     
