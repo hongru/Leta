@@ -34,6 +34,22 @@
 	_.isArray = nativeIsArray || function (o) {
 		return toString.call(o) === '[object Array]';
 	}
+	_.isPlainObject = function (o) {
+		var key;
+		if (!o  
+				|| toString.call(o) !== '[object Object]'
+				// ie 下 window/document/document.body/htmlElement/nodeList toString === '[object Object]'为true
+				// 所以加上 Object.prototype.isPrototypeOf 的判断
+				|| !('isPrototypeOf' in o)
+				// 如果是通过 new function() 产生的自定义对象，他的constructor是继承自原型链的，而不是ownProperty
+				// 如果是plainObject， isPrototypeOf是它的prototype的ownProperty 
+				|| (!hasOwnProperty.call(o, 'constructor') && !hasOwnProperty.call(o.constructor.prototype, 'isPrototypeOf'))) {
+			return false;
+		}
+		for (key in o) {
+			return key === undefined || hasOwnProperty.call(o, key);
+		}
+	}
 	/**
 	 * Method 判断是否为空
 	 * 可用于Object {} 或 Array []
@@ -397,9 +413,13 @@
 			_module(moduleArr[i], function () {
 						loadSuccNum ++;
 						//alert(loadSuccNum);
+						if (loadSuccNum == moduleArr.length) {
+							!!cb && cb.call(context);							
+						}
 					})
 		}
     }
+
     
     /**
      * extend [Method]
@@ -434,9 +454,16 @@
 	 * @param {Object} 源对象
 	 * @param {boolean} 是否覆盖
 	 */
-	Leta.deepExtend = function () {
+	// -- 转移到leta.object.js
 	
-	};
+	//Leta.deepExtend = function (target, source, isOverwrite) {
+	//	if (_.isObject(source)) {
+	//		//自定义target
+
+	//	}
+	//};
+	
+
 	/**
 	 * 把第一个对象作为target，其余都是source，合并到target
 	 * 只提供浅拷贝

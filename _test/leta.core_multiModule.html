@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+<script src="../leta.core.js"></script>
+<script>
+    Leta.module.register('jquery', 'http://code.jquery.com/jquery.min.js')
+	.register('jx', 'http://0.web.qstatic.com/webqqpic/js/jet.all.js');
+
+				Leta.multiModule('jquery', 'jx', function () {
+					console.log($);
+					console.log(Jx);
+				})
+</script>
+</html>
