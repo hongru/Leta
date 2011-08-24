@@ -5,10 +5,11 @@
  * {core}
  * module loader
  */
- 
-(function () {
 
-    var root = this;
+;(function () {
+
+    var root = this,
+		$LETA$ = -1;
     
     var arrayProto = Array.prototype,
         objProto = Object.prototype,
@@ -33,6 +34,22 @@
 	}
 	_.isArray = nativeIsArray || function (o) {
 		return toString.call(o) === '[object Array]';
+	}
+	_.isPlainObject = function (o) {
+		var key;
+		if (!o  
+				|| toString.call(o) !== '[object Object]'
+				// ie 下 window/document/document.body/htmlElement/nodeList toString === '[object Object]'为true
+				// 所以加上 Object.prototype.isPrototypeOf 的判断
+				|| !('isPrototypeOf' in o)
+				// 如果是通过 new function() 产生的自定义对象，他的constructor是继承自原型链的，而不是ownProperty
+				// 如果是plainObject， isPrototypeOf是它的prototype的ownProperty 
+				|| (!hasOwnProperty.call(o, 'constructor') && !hasOwnProperty.call(o.constructor.prototype, 'isPrototypeOf'))) {
+			return false;
+		}
+		for (key in o) {
+			return key === undefined || hasOwnProperty.call(o, key);
+		}
 	}
 	/**
 	 * Method 判断是否为空
@@ -87,10 +104,26 @@
 	_.isRegExp = function (o) {
 		return !!(o && o.test && o.exec && (o.ignoreCase || o.ignoreCase === false));
 	}
+	_.$SCRIPTNODE = function () {
+		var scriptList = document.getElementsByTagName('script'),
+			currentNode = scriptList[scriptList.length-1];
+		return currentNode;
+	}();
+	_.$LETA$ = function () {
+		return ++ $LETA$;
+	}();
+	_.toType = (function (global) {
+				return function (o) {
+				 	if (o === global) {
+						return 'global'; // toType(window) --> 'global' (all browser)
+					}
+					return toString.call(o).match(/\s([a-z|A-Z]+)/)[1].toLowerCase();
+				}
+			})(this);
 
     
     var Leta = _.isUndefined(Leta) ? {} : Leta;
-
+	
     /**
      * Method 使用模块的主函数
      * @param (String or Array) 要使用的模块名
@@ -173,13 +206,13 @@
                     return;
                 }
             }
-            
+
             // load每个模块
             for (var u=0; u<reg.urls.length; u++) {
                 if (u == reg.urls.length - 1) {
                     if (callback) {
                         _module.load(reg.name, reg.urls[u], reg.isAsyn, reg.asyncWait, new _module.prototype.curCallBack(callback, context));
-                    } else {
+                    } else { 
                         _module.load(reg.name, reg.urls[u], reg.isAsyn, reg.asyncWait);
                     }
                 } else {
@@ -337,7 +370,7 @@
             this.callback = _callback;
             this.context = _context;
             this.runCallback = function() {
-                !!this.context ? this.callback.call(this.context) : this.callback();
+                !!this.callback && (!!this.context ? this.callback.call(this.context) : this.callback());
             };
         },
         // -- 获取callback列表
@@ -397,9 +430,13 @@
 			_module(moduleArr[i], function () {
 						loadSuccNum ++;
 						//alert(loadSuccNum);
+						if (loadSuccNum == moduleArr.length) {
+							!!cb && cb.call(context);							
+						}
 					})
 		}
     }
+
     
     /**
      * extend [Method]
@@ -434,9 +471,16 @@
 	 * @param {Object} 源对象
 	 * @param {boolean} 是否覆盖
 	 */
-	Leta.deepExtend = function () {
+	// -- 转移到leta.object.js
 	
-	};
+	//Leta.deepExtend = function (target, source, isOverwrite) {
+	//	if (_.isObject(source)) {
+	//		//自定义target
+
+	//	}
+	//};
+	
+
 	/**
 	 * 把第一个对象作为target，其余都是source，合并到target
 	 * 只提供浅拷贝
@@ -450,8 +494,15 @@
     
     Leta.multiExtend(Leta, {
         module: _module,
-		multiModule: multiModule
+		multiModule: multiModule,
+		arrayProto: arrayProto,
+		objProto: objProto,
+		slice: slice,
+		toString: toString,
+		hasOwnProperty: hasOwnProperty
     }, _)
+
+	Leta.module.register('Leta', Leta.$SCRIPTNODE.src);
     
     window.Leta = Leta;
     
