@@ -6,6 +6,7 @@
 
 
 ;(function () {
+
 	var $O = {};
 	/**
 	 * 深拷贝
@@ -33,6 +34,7 @@
 
 		return result;
 	};
+
 	/**
 	 * 遍历对象
 	 * @method
