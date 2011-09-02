@@ -4,9 +4,23 @@
  * 
  */
 
+<<<<<<< HEAD
 
 ;(function () {
 
+=======
+<<<<<<< HEAD
+
+;(function () {
+=======
+if (typeof Leta === 'undefined' 
+		|| !Leta.$version) {
+	throw new Error('leta.core.js 未载入');
+}
+
+(function () {
+>>>>>>> dc9cba76edfe539a14c5b8e5d68e1332b8860531
+>>>>>>> 46681f683dbbcba0be782d4190e5f634adbc54fc
 	var $O = {};
 	/**
 	 * 深拷贝
@@ -34,7 +48,11 @@
 
 		return result;
 	};
+<<<<<<< HEAD
 
+=======
+<<<<<<< HEAD
+>>>>>>> 46681f683dbbcba0be782d4190e5f634adbc54fc
 	/**
 	 * 遍历对象
 	 * @method
@@ -117,6 +135,12 @@
 		}
 		return target;
 	}
+<<<<<<< HEAD
+=======
+=======
+
+>>>>>>> dc9cba76edfe539a14c5b8e5d68e1332b8860531
+>>>>>>> 46681f683dbbcba0be782d4190e5f634adbc54fc
 
 
 	
