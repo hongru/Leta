@@ -4,8 +4,17 @@
  * 
  */
 
+<<<<<<< HEAD
 
 ;(function () {
+=======
+if (typeof Leta === 'undefined' 
+		|| !Leta.$version) {
+	throw new Error('leta.core.js 未载入');
+}
+
+(function () {
+>>>>>>> dc9cba76edfe539a14c5b8e5d68e1332b8860531
 	var $O = {};
 	/**
 	 * 深拷贝
@@ -33,6 +42,7 @@
 
 		return result;
 	};
+<<<<<<< HEAD
 	/**
 	 * 遍历对象
 	 * @method
@@ -115,6 +125,9 @@
 		}
 		return target;
 	}
+=======
+
+>>>>>>> dc9cba76edfe539a14c5b8e5d68e1332b8860531
 
 
 	
