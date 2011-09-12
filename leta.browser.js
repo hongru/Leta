@@ -134,7 +134,7 @@
         },
         OS: {
             name: BrowserDetect.OS,
-            isTouchDevice: (BrowserDetect.UA.test(/android/) || BrowserDetect.UA.test(/iphone/) || BrowserDetect.UA.test(/ipad/) || BrowserDetect.UA.test(/ipod/))
+            isTouchDevice: (/andriod|iphone|ipad/.test(BrowserDetect.UA))
         }
     })
 
