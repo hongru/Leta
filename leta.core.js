@@ -94,7 +94,7 @@
 			return false;
 		}
 		for (key in o) {
-			return key === undefined || hasOwnProperty.call(o, key);
+			return (key === undefined || hasOwnProperty.call(o, key));
 		}
 	}
 	/**
