@@ -1,0 +1,80 @@
+<script src="../leta.core.js"></script>
+<button id="a">simple</button>
+<button id="b">add args</button>
+<div style="border:1px solid #ccc; width:100px; height: 60px" id="c">multy handlers</div>
+<ul id="ul">
+<li>1</li>
+<li>2</li>
+<li>3</li>
+</ul>
+
+<button id="offaa">off aa</button>
+<button id="offall">off all</button>
+<button id="off-multy">off 'keyup keydown' of document</button>
+<button id="fire-hello">fire hello</button>
+<script>
+	Leta.module('url(../leta.event.js)', function () {
+		console.log(Leta.event);
+		var $E = Leta.event,
+		ela = document.getElementById('a'),
+		elb = document.getElementById('b'),
+		elc = document.getElementById('c'),
+		ul = document.getElementById('ul'),
+		eloffa = document.getElementById('offaa'),
+		offall = document.getElementById('offall'),
+		offMulty = document.getElementById('off-multy'),
+		fireHello = document.getElementById('fire-hello')
+		//simple
+		$E.on(ela, 'click', function (e) {
+			console.log(e)
+			alert('hello')
+		})
+		// add args
+		$E.on(elb, 'click', function (e, a, b) {
+			alert(a+','+ b);
+		}, 'one', 'two')
+		// multy events
+		$E.on(document, 'keyup keydown', function (e) {
+			console.log(e.type + ' >> ' + e.keyCode)
+		});
+		// multy handlers
+		$E.on(elc, {
+			'click': function (e) {alert('clicked')},
+			'mouseover': function (e) {console.log('mouseenter')}
+		});
+		//delegate
+		$E.on(ul, 'li', 'click', function (e) {
+			alert(this.innerHTML)
+		}, function (s) { return document.querySelectorAll(s) })
+		// namespace
+		$E.on(ela, {
+			'click.aa': function (e) { alert('click.aa') },
+			'click.bb': function (e) { alert('click.bb') }
+		});
+		$E.on(eloffa, 'click', function () {
+			$E.off(ela, 'click.aa');
+		})
+		$E.on(offall, 'click', function () {
+			$E.off(ela);
+		})
+		// off multy
+		$E.on(offMulty, 'click', function () {
+			$E.off(document, 'keyup keydown');
+		});
+		// fire
+		$E.on(fireHello, 'click', function (e) {
+			alert('self click');
+			$E.fire(ela, 'click.bb click.aa myevent');
+		});
+		// custom event
+		$E.on(ela, 'myevent', function (e) {
+			alert(e.type);
+		})
+		
+		// object custom event
+		var obj = new function () {};
+		$E.on(obj, 'aEvent bEvent', function() {alert(1111)} );
+		$E.fire(obj, 'aEvent');
+		setTimeout(function () {$E.fire(obj, 'bEvent')}, 1000)
+	})
+</script>

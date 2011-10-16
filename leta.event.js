@@ -116,7 +116,7 @@
 		return function (event) {
 			if (condition ? condition.apply(this, arguments): W3C_MODEL ? true : event && event.propertyName == '_on'+type || !event) {
 				event = event ? _fixEvent(event || ((this.ownerDocument || this.document || this).parentWindow || win).event) : null;
-				fn.apply(element, Array.protorype.slice.call(arguments, event ? 0 : 1).concat(args));
+				fn.apply(element, Array.prototype.slice.call(arguments, event ? 0 : 1).concat(args));
 			}
 		}
 	}
@@ -297,7 +297,7 @@
 			var types = (isDelegate ? fn : events).split(' ');
 			fn = isDelegate ? _dele(events, deleFn, args) : fn;
 			for (var i = types.length; i --; ) {
-				_addListener(element, types[i], fn, Array.protorype.slice.call(arguments, isDelegate ? 4 : 3));
+				_addListener(element, types[i], fn, Array.prototype.slice.call(arguments, isDelegate ? 4 : 3));
 			}
 		}
 
@@ -311,7 +311,7 @@
 			type,
 			events,
 			isString = Leta.isString(orgType),
-			names = isString ? orgType.replace(reg_namespace, ''),
+			names = isString && orgType.replace(reg_namespace, ''),
 			rm = _removeListener,
 			attached = _retrieveEvents(element);
 
