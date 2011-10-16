@@ -207,6 +207,15 @@
 		return element;
 	}
 
+	// fire event listener
+	var _fireListener = W3C_MODEL ? function (isNative, type, element) {
+		var evt = document.createEvent(isNative ? 'HTMLEvents' : 'UIEvents');
+		evt[isNative ? 'initEvent': 'initUIEvent'](type, true, true, window, 1);
+		element.dispatchEvent(evt);
+	} : function (isNative, type, element) {
+		isNative ? element.fireEvent('on'+type, document.createEventObject()) : element['_on'+type]++;
+	};
+
 	// fix events
 	function _fixEvent (e) {
 		var result = {};
@@ -345,8 +354,57 @@
 		}
 
 		return element;
+	};
+
+	/* fire event */
+	var fire = function (element, type, args) {
+		var evt,
+			k,
+			i,
+			m,
+			types = type.split(' ');
+		for (i = types.length; i -- ; ) {
+			type = types[i].replace(reg_strip, '');
+			var isNative = nativeEvents[type],
+				hasNamespace = types[i].replace(reg_namespace, ''),
+				handlers = _retrieveEvents(element)[type];
+			if (hasNamespace) {
+				hasNamespace = hasNamespace.split('.');
+				for (k = hasNamespace.length; k -- ; ) {
+					for (m in handlers) {
+						handlers.hasOwnProperty(m) && new RegExp('^'+hasNamespace[k] + '::\\d*(\\..*)?$').test(m) && handlers[m].apply(element, [false].concat(args));
+					}
+				}
+			} else if (!args && element[eventSupport]) {
+				_fireListener(isNative, type, element);
+			} else {
+				for (k in handlers) {
+					handlers.hasOwnProperty(k) && handlers[k].apply(element, [false].concat(args));
+				}
+			}
+		}
+
+		return element;
+	};
+
+	// 防止ie内存泄漏
+	var __clean__ = function (el) {
+		var uid = off(el).__uid;
+		if (uid) {
+			delete collected[uid];
+			delete registry[uid];
+		}
+	};
+	if (this['attachEvent']) {
+		on(this, 'unload', function () {
+			for (var k in collected) {
+				collected.hasOwnProperty(k) && __clean__(collected[k]);
+			}
+			this.CollectGarbage && CollectGarbage();
+		})
 	}
 
+	// merge to Leta
 	Leta.extend($E, {
 		on: on,
 		off: off,
