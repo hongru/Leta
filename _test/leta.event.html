@@ -12,6 +12,8 @@
 <button id="offall">off all</button>
 <button id="off-multy">off 'keyup keydown' of document</button>
 <button id="fire-hello">fire hello</button>
+
+<div id="test" style="border:1px solid #ccc; width:200px;height:200px">mouseenter  mouseleave</div>
 <script>
 	Leta.module('url(../leta.event.js)', function () {
 		console.log(Leta.event);
@@ -40,7 +42,7 @@
 		// multy handlers
 		$E.on(elc, {
 			'click': function (e) {alert('clicked')},
-			'mouseover': function (e) {console.log('mouseenter')}
+			'mouseenter': function (e) {console.log('mouseenter')}
 		});
 		//delegate
 		$E.on(ul, 'li', 'click', function (e) {
@@ -76,5 +78,8 @@
 		$E.on(obj, 'aEvent bEvent', function() {alert(1111)} );
 		$E.fire(obj, 'aEvent');
 		setTimeout(function () {$E.fire(obj, 'bEvent')}, 1000)
+        
+        $E.on(document.getElementById('test'), 'mouseenter', function () {alert('3')})
 	})
 </script>
+
