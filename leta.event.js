@@ -76,7 +76,7 @@
 		if (!related) {
 			return (related === null);
 		}
-		return (related != this && related.prefix != 'xul' && !/document/.test(this.toString()) && _isDescendant(this, related));
+		return (related != this && related.prefix != 'xul' && !/document/.test(this.toString()) && !_isDescendant(this, related));
 	}
 	// 是否父子关系
 	function _isDescendant (parent, child) {
