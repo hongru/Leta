@@ -1,52 +1,84 @@
 /**
- * Class Constructor
- * from John resig
+ * Leta.Class
  */
+ 
+(function (win, undefined) {
 
-;(function (Leta, undefined) {
-	
-	
- 	var initializing = false,
-		superTest = /horizon/.test(function () {horizon;}) ? /\b_super\b/ : /.*/;
-	// 临时Class
-	var $Class = function () {};
-	// 继承方法extend
-	$Class.extend = function (prop) {
-		var _super = this.prototype;
-		//创建一个实例，但不执行init
-		initializing = true;
-		var prototype = new this();
-		initializing = false;
+	var context = this,
+        L = this['Leta'],
+		$name = L['$name'],
+		fnTest = /'leta'/.test(function () { leta }) ? /\b_super\b/ : /.*/,
+		isFunction  = function (o) {
+			return (L.toType(o) == 'function' && o.apply && o.call);
+		};
 
-		for (var name in prop) {
-			// 用闭包保证多级继承不会污染
-			prototype[name] = (typeof prop[name] === 'function' && typeof _super[name] === 'function' && superTest.test(prop[name])) ? (function (name, fn) {
-					return function () {
-						var temp = this._super;	
-						// 当前子类通过_super继承父类
-						this._super = _super[name];
-						//继承方法执行完毕后还原
-						var ret = fn.apply(this, arguments);
-						this._super = temp;
+	function Class (o) {
+		return extend.call(isFunction(o) ? o : function () {}, o, 1);
+	}
 
-						return ret;
-					}
-				})(name, prop[name]) : prop[name];
-		}
-		
-		//真实的constructor
-		function $Class () {
-			if (!initializing && this.init) {
-				this.init.apply(this, arguments);
+	function process (target, o, _super) {
+		for (var k in o) {
+			if (o.hasOwnProperty(k)) {
+				target[k] = (isFunction(o[k]) && isFunction(_super.prototype[k]) && fnTest.test(o[k])) ? wrap(k, o[k], _super) : o[k];
 			}
 		}
-		$Class.prototype = prototype;
-		$Class.constructor = $Class;
-		$Class.extend = arguments.callee;
-
-		return $Class;
 	}
-	
-	Leta.extend({ $Class : $Class });
 
-})(Leta)
+	function wrap (k, fn, _super) {
+		return function () {
+			var tmp = this._super;
+			this._super = _super.prototype[k];
+
+			var ret = fn.apply(this, arguments);
+			this._super = tmp;
+			return ret;
+		}
+	}
+
+	function extend (o, fromSub) {
+		
+		function superClass () {}
+		superClass.prototype = this.prototype;
+
+		var _super = this,
+			prototype = new superClass(),
+			_constructor = isFunction(o) ? o : this,
+			_methods = isFunction(o) ? {} : o;
+
+		function Class () {
+			if (!!this.initialize) {
+				this.initialize.apply(this, arguments);
+			} else {
+				(!!fromSub || isFunction(o)) && _super.apply(this, arguments);
+				_constructor.apply(this, arguments);
+			}
+		}
+
+		Class.methods = function (o) {
+			process(prototype, o, _super);
+			Class.prototype = prototype;
+			return this;
+		};
+		
+		Class.methods.call(Class, _methods).prototype.constructor = Class;
+
+		Class.extend = arguments.callee;
+
+		Class.prototype.implement = Class.statics = function (o, optFn) {
+			o = L.toType(o) === 'string' ? (function () {
+						var obj = {};
+						obj[o] = optFn;
+						return obj;
+					}()) : o;
+			process(this, o, _super);
+
+			return this;
+		}
+
+		return Class;
+
+	}
+
+	Leta.extend({Class: Class});
+    
+})(window);

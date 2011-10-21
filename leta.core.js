@@ -6,9 +6,15 @@
  * module loader
  */
 
-;(function () {
+(function (win, undefined) {
 
     var root = this,
+        self = this,
+        __INFO__ = {
+            '$name': 'Leta',
+            '$version': 0.1,
+            '$root': root    
+        },
 		$LETA$ = -1;
     
     var arrayProto = Array.prototype,
@@ -21,51 +27,6 @@
     var nativeIsArray = Array.isArray,
         nativeKeys = Object.keys;
 
-	/**
-	 * $Class
-	 * Class constructor
-	 * @return {Class}
-	 */
-	var initializing = false,
-		superTest = /horizon/.test(function () {horizon;}) ? /\b_super\b/ : /.*/;
-	// 临时Class
-	var $Class = function () {};
-	// 继承方法extend
-	$Class.extend = function (prop) {
-		var _super = this.prototype;
-		//创建一个实例，但不执行init
-		initializing = true;
-		var prototype = new this();
-		initializing = false;
-
-		for (var name in prop) {
-			// 用闭包保证多级继承不会污染
-			prototype[name] = (typeof prop[name] === 'function' && typeof _super[name] === 'function' && superTest.test(prop[name])) ? (function (name, fn) {
-					return function () {
-						var temp = this._super;	
-						// 当前子类通过_super继承父类
-						this._super = _super[name];
-						//继承方法执行完毕后还原
-						var ret = fn.apply(this, arguments);
-						this._super = temp;
-
-						return ret;
-					}
-				})(name, prop[name]) : prop[name];
-		}
-		
-		//真实的constructor
-		function $Class () {
-			if (!initializing && this.init) {
-				this.init.apply(this, arguments);
-			}
-		}
-		$Class.prototype = prototype;
-		$Class.constructor = $Class;
-		$Class.extend = arguments.callee;
-
-		return $Class;
-	}
     
     // isSth.
     var _ = {};
@@ -167,8 +128,6 @@
 				}
 			})(this);
 
-    
-    var Leta = _.isUndefined(Leta) ? {} : Leta;
 	
     /**
      * Method 使用模块的主函数
@@ -489,64 +448,69 @@
 	 * @param {Object} 目标对象
 	 * @param {Object} 源对象
 	 * @param {boolean} 是否overwrite
-	 * 参数个数为1的时候默认target为Leta，
-	 * 接受第三个参数，是否覆盖target已有属性方法
+	 * 默认第一个｛Object｝类型的参数为target， 其余的都为source，第一个｛boolean｝类型的参数为isOverwrite
+     * 当只有一个｛Object｝类型参数时，target为Leta
      */
-    Leta.extend = function () {
-        var target, source, args = arguments, isOverwrite = args[2];
-        if (_.isUndefined(isOverwrite)) {
-            isOverwrite = true;
-        }
-        if (args.length === 1) {
-            target = Leta;
-            source = args[0];
-        } else {
-            target = args[0];
-            source = args[1];
-        }
-        for (var p in source) {
-            if (!(p in target) || isOverwrite) {
-                target[p] = source[p];
-            }
-        }
-        return target;
-    }
-	/**
-	 * deepExtend Method
-	 * @param {Object} 目标对象
-	 * @param {Object} 源对象
-	 * @param {boolean} 是否覆盖
-	 */
-	// -- 转移到leta.object.js
-	
-	//Leta.deepExtend = function (target, source, isOverwrite) {
-	//	if (_.isObject(source)) {
-	//		//自定义target
-
-	//	}
-	//};
-	
-
-	/**
-	 * 把第一个对象作为target，其余都是source，合并到target
-	 * 只提供浅拷贝
-	 */
-	Leta.multiExtend = function (target, source) {
-		for (var i = 1; i < arguments.length; i ++) {
-			Leta.extend(target, arguments[i])
+	function extend (target, source, isOverwrite) {
+		var argInd = -1,
+			args = slice.call(arguments, 0);
+		target = self[__INFO__['$name']] || {};
+		source = [];
+		isOverwrite = true;
+		while (args[++ argInd]) {
+			if (_.toType(args[argInd]) === 'boolean') {
+				isOverwrite = args[argInd];
+			} else if (_.toType(args[argInd]) === 'object') {
+				source.push(args[argInd]);
+			} 
 		}
+
+		if (source.length >= 2) {
+			target = source.splice(0, 1)[0];
+		}
+
+		for (var i = 0; i < source.length; i ++) {
+			var _s = source[i];
+			for (var key in _s) {
+				if (!target.hasOwnProperty(key) || isOverwrite) {
+					target[key] = _s[key];
+				}
+			}
+		}
+
 		return target;
 	}
-    
-    Leta.multiExtend(Leta, {
-        module: _module,
-		multiModule: multiModule,
-		$Class: $Class
-    }, _)
 
-	Leta.module.register('Leta', Leta.$SCRIPTNODE.src);
+	function register (name, fn) {
+		var names = name.split('.'),
+			i = -1,
+			loopName = self;
+
+		if (names[0] == '') {names[0] = __INFO__['$name']}
+
+		while (names[++ i]) {
+			if (loopName[names[i]] === undefined) {
+				loopName[names[i]] = {};
+			}
+			loopName = loopName[names[i]]
+		}
+
+		!!fn && fn.call(loopName, self[__INFO__['$name']]);
+		
+	}
     
-    window.Leta = Leta;
+
+    var $methods = {
+        module: _module,
+        multiModule: multiModule,
+        extend: extend,
+        register: register
+    }
     
-})();
+    var Leta = _.isUndefined(Leta) ? extend({}, __INFO__, _, $methods) : self[__INFO__['$name']];
+    this[__INFO__['$name']] = win[__INFO__['$name']] = Leta;
+
+	Leta.module.register(__INFO__['$name'], Leta.$SCRIPTNODE.src);
+    
+})(window);
  
