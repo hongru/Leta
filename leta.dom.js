@@ -136,6 +136,9 @@
 	}
 
 	function _descendants (selector, referEl) {
+		if (referEl.querySelectorAll) {
+			return referEl.querySelectorAll(selector, referEl);
+		}
 		var results = [],
 			elements = [referEl],
 			selectorSplit = _splitSelector(selector),
