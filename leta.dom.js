@@ -136,6 +136,9 @@
 	}
 
 	function _descendants (selector, referEl) {
+		if (referEl.querySelectorAll) {
+			return referEl.querySelectorAll(selector, referEl);
+		}
 		var results = [],
 			elements = [referEl],
 			selectorSplit = _splitSelector(selector),
@@ -235,7 +238,7 @@
 		return elements;
 	}
 
-	// 查找
+	// 查找满足条件的第一个
 	function _find (el, prop, selector) {
 		var condition = _splitSelector(selector)[0];
 		while (el && (!_match(el, condition)) && (el = el[prop])) {} // 排除不符合条件的
@@ -367,8 +370,108 @@
 			return _find(el, 'previousSibling', selector);
 		}
 	};
-	Leta.extend(dom, domSelector);
+	Leta.extend(dom, domSelector);	
+
+
+	/* merge style setter and getter */
+	var byTag = 'getElementsByTagName',
+		isIE = /msie/i.test(navigator.userAgent);
+
+	var featureDetect = function () {
+		var e = doc.createElement('p');
+		e.innerHTML = '<a href="#x">x</a><table style="float:left"></table>';
+
+		return {
+			isHrefExtended: e[byTag]('a')[0]['getAttribute']('href') != '#x', // ie < 9
+			isAutoTbody: e[byTag]('tbody').length != 0, // ie < 9
+			computedStyle: doc.defaultView && doc.defaultView.getComputedStyle,
+			cssFloat: e[byTag]('table')[0].style.styleFloat ? 'styleFloat' : 'cssFloat',
+			transform: function () {
+				var props = ['webkitTransform', 'MozTransform', 'OTransform', 'msTransform', 'Transform'], i
+            	  for (i = 0; i < props.length; i++) {
+           	     if (props[i] in e.style) return props[i]
+          	    }	
+			}()
+		};
+
+	}();
+
+  function styleProperty(p) {
+      (p == 'transform' && (p = featureDetect.transform)) ||
+        (/^transform-?[Oo]rigin$/.test(p) && (p = featureDetect.transform + "Origin")) ||
+        (p == 'float' && (p = featureDetect.cssFloat))
+      return p ? camelize(p) : null
+  }
+  function camelize(s) {
+    return s.replace(/-(.)/g, function (m, m1) {
+      return m1.toUpperCase()
+    })
+  }
+  
 	
+
+	var getStyle = featureDetect.computedStyle ? 
+		function (el, prop) {
+			var value = null,
+				computed = doc.defaultView.getComputedStyle(el, '');
+			computed && (value = computed[prop]);
+
+			return el.style[prop] || value;
+		} : 
+
+		(isIE && docEl.currentStyle) ?
+		function (el, prop) {
+			if (prop == 'opacity') {
+				var val = 100;
+				try {
+					val = el.filters['DXImageTransform.Microsoft.Alpha'].opacity;
+				} catch (err1) {
+					try {
+						val = el.filters['alpha'].opacity;
+					} catch (err2) {}
+				}
+				return val /100;
+			}
+
+			var value = el.currentStyle ? el.currentStyle[prop] null;
+			return el.style[prop] || value;
+		} : 
+		function (el, prop) {
+			return el.style[prop];
+		};
+
+	getStyle.viewport = function () {
+		return {
+			width: isIE ? docEl.clientWidth : win.innerWdith,
+			height: isIE ? docEl.clientHeight : win.innerHeight
+		};
+	};
+	getStyle.doc = function () {
+		var vp = getStyle.viewport();
+		return {
+			width: Math.max(doc.body.scrollWidth, docEl.scrollWdith, vp.width),
+			height: Math.max(doc.body.scrollHeight, docEl.scrollHeight, vp.height)
+		};
+	};
+
+	var styleGS = {
+		getStyle: function (el, prop) {
+			if (!el) {
+				return null;
+			}
+			if (el === doc || el === win) {
+				var vp = (el === doc) ? getStyle.doc() : getStyle.viewport();
+				return prop == 'width' ? vp.width : prop == 'height' ? vp.height : '';
+			}
+			return (prop = styleProperty(prop)) ? getStyle(el, prop) : null;
+		},
+		setStyle: function (el, prop, value) {
+				  
+		},
+		css: function (el, prop, value) {
+				 
+		}
+	}
 
  	Leta.extend({dom: dom});
 	_init();

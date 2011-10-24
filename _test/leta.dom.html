@@ -1,0 +1,24 @@
+<script src="../leta.core.js"></script>
+<script src="../leta.event.js"></script>
+
+<div id="doc">
+<header>head</header>
+<div id="body">body</div>
+<footer>footer</footer>
+
+<div id="test">
+    <a href="#x">x</a><table style="float:left"></table>
+</div>
+</div>
+
+<script>
+    Leta.module('url(../leta.dom.js)', function () {
+        //console.log(Leta.dom)
+    });
+    
+    var test = document.getElementById('test');
+    var href = test.getElementsByTagName('a')[0].getAttribute('href');
+    var tb = test.getElementsByTagName('tbody');
+    alert(href);
+    alert(tb.length)
+</script>

@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<meta charset="utf-8" />
+<head>
+<script src="../leta.core.js"></script>
+<script src="../leta.class.js"></script>
+<script src="../leta.Dr.js"></script>
+<style>
+    body, ul {margin: 0; padding: 0; font-family: Georgia; text-align: center;}
+    ul, li {list-style: none}
+    #tab-wrap {
+        width: 300px;
+        margin: 20px auto;
+        border: 1px solid #999;
+        -webkit-box-shadow: 0 0 5px #999;
+        -moz-box-shadow: 0 0 5px #999;
+    }
+    #tab-header {
+        
+    }
+    #tab-header li {
+        display: inline-block;
+        *display: inline;
+        *zoom: 1;
+        width: 96px;
+        font-size: 0;
+        letter-spacing: -4px;
+    }
+    #tab-header li a {
+        width: 100%;
+        font-size: 14px;
+        font-weight: bold;
+        letter-spacing: 0;
+        cursor: pointer;
+        display: block;
+        border-bottom: 1px solid #ccc;
+        height: 40px;
+        line-height: 40px;
+    }
+    #tab-header li a:hover { background: #f9de8f }
+    #tab-header li.current a {
+        background: #ff8a00;
+    }
+    #tab-content {
+        height: 200px;
+        width: 100%;
+        font-size: 20px;
+        line-height: 100px;
+    }
+    #tab-content li {
+        display: none;
+    }
+    #tab-content li.current {display: block}
+</style>
+</head>
+
+<body>
+    <h1>Director pattern demo</h1>
+    <div id="tab-wrap">
+        <ul id="tab-header">
+            <li><a data-index="0"> one </a></li>
+            <li><a data-index="1"> two </a></li>
+            <li><a data-index="2"> three </a></li>
+        </ul>
+        <ul id="tab-content">
+            <li> content  One </li>
+            <li> content  Two </li>
+            <li> content  Three </li>
+        </ul>
+    </div>
+    
+    <script>
+        TAB = function () {
+            // private methods
+            var addEvent = function (o, e, f) {
+                o.addEventListener ? o.addEventListener(e, f, false) : o.attachEvent('on'+e, function () {f.call(o)});
+            };
+            var $ = function (o) {
+                return (o.nodeType && o.nodeType == 1) ? o : (document.getElementById(o) || document.querySelector(o));
+            };
+            function hasClass(ele,cls) {
+                return ele.className.match(new RegExp('(\\s|^)'+cls+'(\\s|$)'));
+            }
+
+            function addClass(ele,cls) {
+                if (!hasClass(ele,cls)) ele.className += " "+cls;
+            }
+             
+            function removeClass(ele,cls) {
+                if (hasClass(ele,cls)) {
+                    var reg = new RegExp('(\\s|^)'+cls+'(\\s|$)');
+                    ele.className=ele.className.replace(reg,' ');
+                }
+            }
+            
+            // Director pattern
+            // 声明一个名为 tab的导演，并且让导演知道第一幕要做什么
+            var Dr = new Leta.Dr.Director('tab', function () {
+                // 第一幕的安排，会在导演 wake的时候执行
+                this.$firstAct = function () {
+                    // 显示第一个tab
+                    tabH.setCurrent(0);
+                    tabC.setCurrent(0);
+                };
+            });
+            
+            // tab haeder
+            // 模块之一，声明一个名为 tabHeader 的演员，所属导演为 Dr
+            var tabH = new Leta.Dr.Actor({
+                name: 'tabHeader',
+                director: Dr
+            }, function () {
+
+                this.EL_UL = $('tab-header');
+                this.EL_BTNS = this.EL_UL.getElementsByTagName('li');
+                this._current = -1;
+                
+                // 这个演员醒来后要做什么
+                this.$WAKETODO = ['bindEvent'];
+                
+                // 用于设置自己当前状态的方法，不过自己内部不会去调，导演会告诉他什么时候调用
+                this.setCurrent = function (ind) {
+                    if (ind < this.EL_BTNS.length) {
+                        this.EL_BTNS[this._current] && removeClass(this.EL_BTNS[this._current], 'current');
+                        addClass(this.EL_BTNS[ind], 'current');
+                        this._current = ind;
+                    }
+                };
+                this.bindEvent = function () {
+                    var self = this;
+                    addEvent(this.EL_UL, 'click', function (e) {
+                        e = e || event;
+                        var tar = e.target || e.srcElement;
+                        if (tar.nodeName.toLowerCase() == 'a') {
+                            self.$notifyDirector('clicked', tar.getAttribute('data-index'));
+                        }
+                    })
+                }
+            });
+            
+            // tab content
+            // 模块之二， 声明一个名为 tabContent 的演员，同样属于导演 Dr
+            var tabC = new Leta.Dr.Actor({
+                name: 'tabContent',
+                director: Dr
+            }, function () {
+                var self = this;
+                this.EL_UL = $('tab-content');
+                this.EL_CONS = this.EL_UL.getElementsByTagName('li');
+                this._current = -1;
+                
+                // 自己的一个方法
+                this.setCurrent = function (ind) {
+                    if (ind < this.EL_CONS.length) {
+                        this.EL_CONS[this._current] && removeClass(this.EL_CONS[this._current], 'current');
+                        addClass(this.EL_CONS[ind], 'current');
+                        this._current = ind;
+                    }
+                } 
+            });
+            
+            // Director observe Actors
+            // 导演观察者所有演员，由于这里只有tabHeader与外界有 接触，所以添加对tabHeader的观察者。
+            // 并确认接到通知后的反馈。
+            Dr.$observe(tabH, 'clicked', function (ind) {
+                tabH.setCurrent(ind);
+                tabC.setCurrent(ind);
+            })
+            
+            return { director : Dr };
+        
+        }();
+        
+        onload = function () {
+            TAB.director.$wake();
+        }
+        
+    </script>
+</body>
+</html>
