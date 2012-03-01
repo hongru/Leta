@@ -107,5 +107,7 @@
 
 		return ret;
 	}
+	
+	Leta.extend({array: $A});
 
 })(Leta);
