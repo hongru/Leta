@@ -126,7 +126,7 @@
         browser: {
             name: BrowserDetect.browser,
             version: BrowserDetect.version,
-            msie: (BrowserDetect.browser === 'MSIE'),
+            msie: (BrowserDetect.browser === 'Explorer'),
             chorme: (BrowserDetect.browser === 'Chrome'),
             firefox: (BrowserDetect.browser === 'Firefox'),
             safari: (BrowserDetect.browser === 'Safari'),
