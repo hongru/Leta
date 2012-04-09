@@ -17,7 +17,7 @@
 	})
 
 */
-(function (win, undefined) {
+;(function (win, undefined) {
 	
 	var getUniqueId = function () {
 		var id = 0;
@@ -289,4 +289,4 @@
 		win.Leta = {};
 		Leta.ajax = ajax;
 	}
-})(window)
+})(window);

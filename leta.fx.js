@@ -345,6 +345,6 @@
     fx.formatTransform = formatTransform
 
     if (typeof module !== 'undefined') module.exports = fx;
-    else context['fx'] = fx
+    else context['fx'] = fx;
 
-} (window.Leta || this, document, window)
+}(window.Leta || this, document, window);

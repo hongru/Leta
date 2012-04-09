@@ -4,7 +4,7 @@
  * @merged to [dom]
  */
 
-(function (win, undefined) {
+;(function (win, undefined) {
  
  	var $E = {};
 
@@ -412,4 +412,4 @@
 	});
 	Leta.extend({event: $E});
  
- })(window)
+ })(window);
