@@ -139,51 +139,76 @@ Leta.register('.util', function ($L) {
 	this.imgReady = imgReady;
 	
 	// domready
-	var domReady = function () {
-		var fns = [],
-			fn, f = false,
-			doc = document,
-			testEl = doc.documentElement,
-			hack = testEl.doScroll,
-			domContentLoaded = 'DOMContentLoaded',
-			addEventListener = 'addEventListener',
-			onreadystatechange = 'onreadystatechange',
-			readyState = 'readyState',
-			loaded = /^loade|c/.test(doc[readyState]);
+	var domReady = (function() {
 
-		function flush(f) {
-			loaded = 1;
-			while (f = fns.shift()) f();
+		var w3c = !!document.addEventListener,
+			loaded = false,
+			toplevel = false,
+			fns = [];
+		
+		if (w3c) {
+			document.addEventListener("DOMContentLoaded", contentLoaded, true);
+			window.addEventListener("load", ready, false);
+		}
+		else {
+			document.attachEvent("onreadystatechange", contentLoaded);
+			window.attachEvent("onload", ready);
+			
+			try {
+				toplevel = window.frameElement === null;
+			} catch(e) {}
+			if ( document.documentElement.doScroll && toplevel ) {
+				scrollCheck();
+			}
 		}
 
-		doc[addEventListener] && doc[addEventListener](domContentLoaded, fn = function () {
-			doc.removeEventListener(domContentLoaded, fn, f)
-			flush()
-		}, f);
-
-		hack && doc.attachEvent(onreadystatechange, fn = function () {
-			if (/^c/.test(doc[readyState])) {
-				doc.detachEvent(onreadystatechange, fn)
-				flush()
+		function contentLoaded() {
+			(w3c)?
+				document.removeEventListener("DOMContentLoaded", contentLoaded, true) :
+				document.readyState === "complete" && 
+				document.detachEvent("onreadystatechange", contentLoaded);
+			ready();
+		}
+		
+		// If IE is used, use the trick by Diego Perini
+		// http://javascript.nwbox.com/IEContentLoaded/
+		function scrollCheck() {
+			if (loaded) {
+				return;
 			}
-		});
-
-		return (hack ?
-			function (fn) {
-				self != top ? loaded ? fn() : fns.push(fn) : function () {
-					try {
-						testEl.doScroll('left')
-					} catch (e) {
-						return setTimeout(function () {
-							ready(fn)
-						}, 50)
-					}
-					fn();
-				}()
-			} : function (fn) {
-				loaded ? fn() : fns.push(fn)
-			});
-	}();
+			
+			try {
+				document.documentElement.doScroll("left");
+			}
+			catch(e) {
+				window.setTimeout(arguments.callee, 15);
+				return;
+			}
+			ready();
+		}
+		
+		function ready() {
+			if (loaded) {
+				return;
+			}
+			loaded = true;
+			
+			var len = fns.length,
+				i = 0;
+				
+			for( ; i < len; i++) {
+				fns[i].call(document);
+			}
+		}
+		
+		return function(fn) {
+			// if the DOM is already ready,
+			// execute the function
+			return (loaded)? 
+				fn.call(document):      
+				fns.push(fn);
+		}
+	})();
 	this.domReady = domReady;
 	
 	// export to top
