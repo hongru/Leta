@@ -504,7 +504,9 @@
         module: _module,
         multiModule: multiModule,
         extend: extend,
-        register: register
+		mix: extend,
+        register: register,
+		NS: register
     }
     
     var Leta = _.isUndefined(Leta) ? extend({}, __INFO__, _, $methods) : self[__INFO__['$name']];
