@@ -1,479 +1,867 @@
-/**
- * leta.dom
- * @require [core, event, array, object, string]
- */
+;(function () {
+    var context = this,
+        win = window,
+        doc = win.document,
+        html = doc.documentElement,
+        parentNode = 'parentNode',
+        query = null,
+        specialAttributes = /^(checked|value|selected)$/i,
+        specialTags = /^(select|fieldset|table|tbody|tfoot|td|tr|colgroup)$/i // tags that we have trouble inserting *into*
+        ,
+        table = ['<table>', '</table>', 1],
+        td = ['<table><tbody><tr>', '</tr></tbody></table>', 3],
+        option = ['<select>', '</select>', 1],
+        noscope = ['_', '', 0, 1],
+        tagMap = { // tags that we have trouble *inserting*
+            thead: table,
+            tbody: table,
+            tfoot: table,
+            colgroup: table,
+            caption: table,
+            tr: ['<table><tbody>', '</tbody></table>', 2],
+            th: td,
+            td: td,
+            col: ['<table><colgroup>', '</colgroup></table>', 2],
+            fieldset: ['<form>', '</form>', 1],
+            legend: ['<form><fieldset>', '</fieldset></form>', 2],
+            option: option,
+            optgroup: option,
+            script: noscope,
+            style: noscope,
+            link: noscope,
+            param: noscope,
+            base: noscope
+        },
+        stateAttributes = /^(checked|selected)$/,
+        ie = /msie/i.test(navigator.userAgent),
+        hasClass, addClass, removeClass, uidMap = {},
+        uuids = 0,
+        digit = /^-?[\d\.]+$/,
+        dattr = /^data-(.+)$/,
+        px = 'px',
+        setAttribute = 'setAttribute',
+        getAttribute = 'getAttribute',
+        byTag = 'getElementsByTagName',
+        features = function () {
+            var e = doc.createElement('p')
+            e.innerHTML = '<a href="#x">x</a><table style="float:left;"></table>'
+            return {
+                hrefExtended: e[byTag]('a')[0][getAttribute]('href') != '#x' // IE < 8
+                ,
+                autoTbody: e[byTag]('tbody').length !== 0 // IE < 8
+                ,
+                computedStyle: doc.defaultView && doc.defaultView.getComputedStyle,
+                cssFloat: e[byTag]('table')[0].style.styleFloat ? 'styleFloat' : 'cssFloat',
+                transform: function () {
+                    var props = ['webkitTransform', 'MozTransform', 'OTransform', 'msTransform', 'Transform'],
+                        i
+                    for (i = 0; i < props.length; i++) {
+                        if (props[i] in e.style) return props[i]
+                    }
+                }(),
+                classList: 'classList' in e
+            }
+        }(),
+        trimReplace = /(^\s*|\s*$)/g,
+        whitespaceRegex = /\s+/,
+        toString = String.prototype.toString,
+        unitless = {
+            lineHeight: 1,
+            zoom: 1,
+            zIndex: 1,
+            opacity: 1,
+            boxFlex: 1,
+            WebkitBoxFlex: 1,
+            MozBoxFlex: 1
+        },
+        trim = String.prototype.trim ?
+    function (s) {
+        return s.trim()
+    } : function (s) {
+        return s.replace(trimReplace, '')
+    }
 
-(function (win, undefined) {
- 
- 	var dom = {};
+    function classReg(c) {
+        return new RegExp("(^|\\s+)" + c + "(\\s+|$)")
+    }
 
-	// pravite vars
-	// \s*([>+~]) for selector symbol
-	// \s*([*\w-]+) for tag
-	// ?:#([\w-]+) for id
-	// ?:\.([\w.-]+) for class
-	var quickReg = /^\s*([>+~])?\s*([*\w-]+)?(?:#([\w-]+))?(?:\.([\w.-]+))?\s*/i,
-		doc = document,
-		docEl = document.documentElement,
-		_readyCallbacks = [];
+    function each(ar, fn, scope) {
+        for (var i = 0, l = ar.length; i < l; i++) fn.call(scope || ar[i], ar[i], i, ar)
+        return ar
+    }
 
-	// private methods
-	function _init () {
-		var done = false,
-			timer,
-			callback;
-		function doFn () {
-			if (!done) {
-				done = true;
-				if (!Leta.isUndefined(timer)) {
-					timer = win.clearTimeout(timer);
-				}
-				for (var i = 0, l = _readyCallbacks.length; i < l; i ++) {
-					_readyCallbacks[i]();
-				}
-			}
-		}
-		// http://javascript.nwbox.com/IEContentLoaded/
-		function scrollCheck () {
-			try {
-				docEl.doScroll('left');
-			} catch(e) {
-				timer = window.setTimeout(scrollCheck, 20);
-				return;
-			}
-			doFn();
-		}
+    function deepEach(ar, fn, scope) {
+        for (var i = 0, l = ar.length; i < l; i++) {
+            if (isNode(ar[i])) {
+                deepEach(ar[i].childNodes, fn, scope)
+                fn.call(scope || ar[i], ar[i], i, ar)
+            }
+        }
+        return ar
+    }
 
-		if (/loaded|complete/.test(doc.readyState)) {
-			win.setTimeout(doFn, 0);
-			return;
-		}
-		if (doc.addEventListener) {
-			doc.addEventListener('DOMContentLoaded', doFn, false);
-			doc.addEventListener('loaded', doFn, false); // 因为有done标志位，不会执行两次
-		} else if (doc.attachEvent) {
-			// doScroll 在iframe中有问题
-			var topLevel = false;
-			try {
-				topLevel = (!win.frameElement);
-			} catch(e) {}
+    function camelize(s) {
+        return s.replace(/-(.)/g, function (m, m1) {
+            return m1.toUpperCase()
+        })
+    }
 
-			if (topLevel && docEl.doScroll) {
-				scrollCheck();
-			}
-			doc.attachEvent('onload', doFn);
+    function decamelize(s) {
+        return s ? s.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase() : s
+    }
 
-		}
+    function data(el) {
+        el[getAttribute]('data-node-uid') || el[setAttribute]('data-node-uid', ++uuids)
+        uid = el[getAttribute]('data-node-uid')
+        return uidMap[uid] || (uidMap[uid] = {})
+    }
+
+    function clearData(el) {
+        uid = el[getAttribute]('data-node-uid')
+        uid && (delete uidMap[uid])
+    }
+
+    function dataValue(d, f) {
+        try {
+            return (d === null || d === undefined) ? undefined : d === 'true' ? true : d === 'false' ? false : d === 'null' ? null : (f = parseFloat(d)) == d ? f : d;
+        } catch (e) {}
+        return undefined
+    }
+
+    function isNode(node) {
+        return node && node.nodeName && node.nodeType == 1
+    }
+
+    function some(ar, fn, scope, i, j) {
+        for (i = 0, j = ar.length; i < j; ++i) if (fn.call(scope, ar[i], i, ar)) return true
+        return false
+    }
+
+    function styleProperty(p) {
+        (p == 'transform' && (p = features.transform)) || (/^transform-?[Oo]rigin$/.test(p) && (p = features.transform + "Origin")) || (p == 'float' && (p = features.cssFloat))
+        return p ? camelize(p) : null
+    }
+
+    var getStyle = features.computedStyle ?
+    function (el, property) {
+        var value = null,
+            computed = doc.defaultView.getComputedStyle(el, '')
+            computed && (value = computed[property])
+            return el.style[property] || value
+    } :
+
+    (ie && html.currentStyle) ?
+
+    function (el, property) {
+        if (property == 'opacity') {
+            var val = 100
+            try {
+                val = el.filters['DXImageTransform.Microsoft.Alpha'].opacity
+            } catch (e1) {
+                try {
+                    val = el.filters('alpha').opacity
+                } catch (e2) {}
+            }
+            return val / 100
+        }
+        var value = el.currentStyle ? el.currentStyle[property] : null
+        return el.style[property] || value
+    } :
+
+    function (el, property) {
+        return el.style[property]
+    }
+
+    // this insert method is intense
+    function insert(target, host, fn) {
+        var i = 0,
+            self = host || this,
+            r = []
+            // target nodes could be a css selector if it's a string and a selector engine is present
+            // otherwise, just use target
+            ,
+            nodes = query && typeof target == 'string' && target.charAt(0) != '<' ? query(target) : target
+            // normalize each node in case it's still a string and we need to create nodes on the fly
+            each(normalize(nodes), function (t) {
+                each(self, function (el) {
+                    var n = !el[parentNode] || (el[parentNode] && !el[parentNode][parentNode]) ?
+                    function () {
+                        var c = el.cloneNode(true),
+                            cloneElems, elElems
+
+                            // check for existence of an event cloner
+                            // preferably https://github.com/fat/bean
+                            // otherwise $D won't do this for you
+                        if (self.$ && self.cloneEvents) {
+                            self.$(c).cloneEvents(el)
+
+                            // clone events from every child node
+                            cloneElems = self.$(c).find('*')
+                            elElems = self.$(el).find('*')
+
+                            for (var i = 0; i < elElems.length; i++)
+                            self.$(cloneElems[i]).cloneEvents(elElems[i])
+                        }
+                        return c
+                    }() : el
+                    fn(t, n)
+                    r[i] = n
+                    i++
+                })
+            }, this)
+            each(r, function (e, i) {
+                self[i] = e
+            })
+            self.length = i
+        return self
+    }
+
+    function xy(el, x, y) {
+        var $el = $(el),
+            style = $el.css('position'),
+            offset = $el.offset(),
+            rel = 'relative',
+            isRel = style == rel,
+            delta = [parseInt($el.css('left'), 10), parseInt($el.css('top'), 10)]
+
+        if (style == 'static') {
+            $el.css('position', rel)
+            style = rel
+        }
+
+        isNaN(delta[0]) && (delta[0] = isRel ? 0 : el.offsetLeft)
+        isNaN(delta[1]) && (delta[1] = isRel ? 0 : el.offsetTop)
+
+        x != null && (el.style.left = x - offset.left + delta[0] + px)
+        y != null && (el.style.top = y - offset.top + delta[1] + px)
+
+    }
+
+    // classList support for class management
+    // altho to be fair, the api sucks because it won't accept multiple classes at once
+    // so we iterate down below
+    if (features.classList) {
+        hasClass = function (el, c) {
+            return el.classList.contains(c)
+        }
+        addClass = function (el, c) {
+            el.classList.add(c)
+        }
+        removeClass = function (el, c) {
+            el.classList.remove(c)
+        }
+    } else {
+        hasClass = function (el, c) {
+            return classReg(c).test(el.className)
+        }
+        addClass = function (el, c) {
+            el.className = trim(el.className + ' ' + c)
+        }
+        removeClass = function (el, c) {
+            el.className = trim(el.className.replace(classReg(c), ' '))
+        }
+    }
+
+
+    // this allows method calling for setting values
+    // example:
+    // $(elements).css('color', function (el) {
+    //   return el.getAttribute('data-original-color')
+    // })
+    function setter(el, v) {
+        return typeof v == 'function' ? v(el) : v
+    }
+
+    function $D(elements) {
+        this.length = 0
+        if (elements) {
+            elements = typeof elements !== 'string' && !elements.nodeType && typeof elements.length !== 'undefined' ? elements : [elements]
+            this.length = elements.length
+            for (var i = 0; i < elements.length; i++) this[i] = elements[i]
+        }
+    }
+
+    $D.prototype = {
+
+        // indexr method, because jQueriers want this method. Jerks
+        get: function (index) {
+            return this[index] || null
+        }
+
+        // itetators
+        ,
+        each: function (fn, scope) {
+            return each(this, fn, scope)
+        }
+
+        ,
+        deepEach: function (fn, scope) {
+            return deepEach(this, fn, scope)
+        }
+
+        ,
+        map: function (fn, reject) {
+            var m = [],
+                n, i
+            for (i = 0; i < this.length; i++) {
+                n = fn.call(this, this[i], i)
+                reject ? (reject(n) && m.push(n)) : m.push(n)
+            }
+            return m
+        }
+
+        // text and html inserters!
+        ,
+        html: function (h, text) {
+            var method = text ? html.textContent === undefined ? 'innerText' : 'textContent' : 'innerHTML';
+
+            function append(el) {
+                each(normalize(h), function (node) {
+                    el.appendChild(node)
+                })
+            }
+            return typeof h !== 'undefined' ? this.empty().each(function (el) {
+                !text && specialTags.test(el.tagName) ? append(el) : (function () {
+                    try {
+                        (el[method] = h)
+                    } catch (e) {
+                        append(el)
+                    }
+                }())
+            }) : this[0] ? this[0][method] : ''
+        }
+
+        ,
+        text: function (text) {
+            return this.html(text, 1)
+        }
+
+        // more related insertion methods
+        ,
+        append: function (node) {
+            return this.each(function (el) {
+                each(normalize(node), function (i) {
+                    el.appendChild(i)
+                })
+            })
+        }
+
+        ,
+        prepend: function (node) {
+            return this.each(function (el) {
+                var first = el.firstChild
+                each(normalize(node), function (i) {
+                    el.insertBefore(i, first)
+                })
+            })
+        }
+
+        ,
+        appendTo: function (target, host) {
+            return insert.call(this, target, host, function (t, el) {
+                t.appendChild(el)
+            })
+        }
+
+        ,
+        prependTo: function (target, host) {
+            return insert.call(this, target, host, function (t, el) {
+                t.insertBefore(el, t.firstChild)
+            })
+        }
+
+        ,
+        before: function (node) {
+            return this.each(function (el) {
+                each($.create(node), function (i) {
+                    el[parentNode].insertBefore(i, el)
+                })
+            })
+        }
+
+        ,
+        after: function (node) {
+            return this.each(function (el) {
+                each($.create(node), function (i) {
+                    el[parentNode].insertBefore(i, el.nextSibling)
+                })
+            })
+        }
+
+        ,
+        insertBefore: function (target, host) {
+            return insert.call(this, target, host, function (t, el) {
+                t[parentNode].insertBefore(el, t)
+            })
+        }
+
+        ,
+        insertAfter: function (target, host) {
+            return insert.call(this, target, host, function (t, el) {
+                var sibling = t.nextSibling
+                if (sibling) {
+                    t[parentNode].insertBefore(el, sibling);
+                } else {
+                    t[parentNode].appendChild(el)
+                }
+            })
+        }
+
+        ,
+        replaceWith: function (html) {
+            this.deepEach(clearData)
+
+            return this.each(function (el) {
+                el.parentNode.replaceChild($.create(html)[0], el)
+            })
+        }
+
+        // class management
+        ,
+        addClass: function (c) {
+            c = toString.call(c).split(whitespaceRegex)
+            return this.each(function (el) {
+                // we `each` here so you can do $el.addClass('foo bar')
+                each(c, function (c) {
+                    if (c && !hasClass(el, setter(el, c))) addClass(el, setter(el, c))
+                })
+            })
+        }
+
+        ,
+        removeClass: function (c) {
+            c = toString.call(c).split(whitespaceRegex)
+            return this.each(function (el) {
+                each(c, function (c) {
+                    if (c && hasClass(el, setter(el, c))) removeClass(el, setter(el, c))
+                })
+            })
+        }
+
+        ,
+        hasClass: function (c) {
+            c = toString.call(c).split(whitespaceRegex)
+            return some(this, function (el) {
+                return some(c, function (c) {
+                    return c && hasClass(el, c)
+                })
+            })
+        }
+
+        ,
+        toggleClass: function (c, condition) {
+            c = toString.call(c).split(whitespaceRegex)
+            return this.each(function (el) {
+                each(c, function (c) {
+                    if (c) {
+                        typeof condition !== 'undefined' ? condition ? addClass(el, c) : removeClass(el, c) : hasClass(el, c) ? removeClass(el, c) : addClass(el, c)
+                    }
+                })
+            })
+        }
+
+        // display togglers
+        ,
+        show: function (type) {
+            return this.each(function (el) {
+                el.style.display = type || ''
+            })
+        }
+
+        ,
+        hide: function () {
+            return this.each(function (el) {
+                el.style.display = 'none'
+            })
+        }
+
+        ,
+        toggle: function (callback, type) {
+            this.each(function (el) {
+                el.style.display = (el.offsetWidth || el.offsetHeight) ? 'none' : type || ''
+            })
+            callback && callback()
+            return this
+        }
+
+        // DOM Walkers & getters
+        ,
+        first: function () {
+            return $(this.length ? this[0] : [])
+        }
+
+        ,
+        last: function () {
+            return $(this.length ? this[this.length - 1] : [])
+        }
+
+        ,
+        next: function () {
+            return this.related('nextSibling')
+        }
+
+        ,
+        previous: function () {
+            return this.related('previousSibling')
+        }
+
+        ,
+        parent: function () {
+            return this.related(parentNode)
+        }
+
+        ,
+        related: function (method) {
+            return this.map(
+
+            function (el) {
+                el = el[method]
+                while (el && el.nodeType !== 1) {
+                    el = el[method]
+                }
+                return el || 0
+            }, function (el) {
+                return el
+            })
+        }
+
+        // meh. use with care. the ones in Bean are better
+        ,
+        focus: function () {
+            this.length && this[0].focus()
+            return this
+        }
+
+        ,
+        blur: function () {
+            return this.each(function (el) {
+                el.blur()
+            })
+        }
+
+        // style getter setter & related methods
+        ,
+        css: function (o, v, p) {
+            // is this a request for just getting a style?
+            if (v === undefined && typeof o == 'string') {
+                // repurpose 'v'
+                v = this[0]
+                if (!v) {
+                    return null
+                }
+                if (v === doc || v === win) {
+                    p = (v === doc) ? $.doc() : $.viewport()
+                    return o == 'width' ? p.width : o == 'height' ? p.height : ''
+                }
+                return (o = styleProperty(o)) ? getStyle(v, o) : null
+            }
+            var iter = o
+            if (typeof o == 'string') {
+                iter = {}
+                iter[o] = v
+            }
+
+            if (ie && iter.opacity) {
+                // oh this 'ol gamut
+                iter.filter = 'alpha(opacity=' + (iter.opacity * 100) + ')'
+                // give it layout
+                iter.zoom = o.zoom || 1;
+                delete iter.opacity;
+            }
+
+            function fn(el, p, v) {
+                for (var k in iter) {
+                    if (iter.hasOwnProperty(k)) {
+                        v = iter[k];
+                        // change "5" to "5px" - unless you're line-height, which is allowed
+                        (p = styleProperty(k)) && digit.test(v) && !(p in unitless) && (v += px)
+                        el.style[p] = setter(el, v)
+                    }
+                }
+            }
+            return this.each(fn)
+        }
+
+        ,
+        offset: function (x, y) {
+            if (typeof x == 'number' || typeof y == 'number') {
+                return this.each(function (el) {
+                    xy(el, x, y)
+                })
+            }
+            if (!this[0]) return {
+                top: 0,
+                left: 0,
+                height: 0,
+                width: 0
+            }
+            var el = this[0],
+                width = el.offsetWidth,
+                height = el.offsetHeight,
+                top = el.offsetTop,
+                left = el.offsetLeft
+            while (el = el.offsetParent) {
+                top = top + el.offsetTop
+                left = left + el.offsetLeft
+            }
+
+            return {
+                top: top,
+                left: left,
+                height: height,
+                width: width
+            }
+        }
+
+        ,
+        dim: function () {
+            if (!this.length) return {
+                height: 0,
+                width: 0
+            }
+            var el = this[0],
+                orig = !el.offsetWidth && !el.offsetHeight ?
+                // el isn't visible, can't be measured properly, so fix that
+            function (t, s) {
+                s = {
+                    position: el.style.position || '',
+                    visibility: el.style.visibility || '',
+                    display: el.style.display || ''
+                }
+                t.first().css({
+                    position: 'absolute',
+                    visibility: 'hidden',
+                    display: 'block'
+                })
+                return s
+            }(this) : null, width = el.offsetWidth, height = el.offsetHeight
+
+            orig && this.first().css(orig)
+            return {
+                height: height,
+                width: width
+            }
+        }
+
+        // attributes are hard. go shopping
+        ,
+        attr: function (k, v) {
+            var el = this[0]
+            if (typeof k != 'string' && !(k instanceof String)) {
+                for (var n in k) {
+                    k.hasOwnProperty(n) && this.attr(n, k[n])
+                }
+                return this
+            }
+            return typeof v == 'undefined' ? !el ? null : specialAttributes.test(k) ? stateAttributes.test(k) && typeof el[k] == 'string' ? true : el[k] : (k == 'href' || k == 'src') && features.hrefExtended ? el[getAttribute](k, 2) : el[getAttribute](k) : this.each(function (el) {
+                specialAttributes.test(k) ? (el[k] = setter(el, v)) : el[setAttribute](k, setter(el, v))
+            })
+        }
+
+        ,
+        removeAttr: function (k) {
+            return this.each(function (el) {
+                stateAttributes.test(k) ? (el[k] = false) : el.removeAttribute(k)
+            })
+        }
+
+        ,
+        val: function (s) {
+            return (typeof s == 'string') ? this.attr('value', s) : this.length ? this[0].value : null
+        }
+
+        // use with care and knowledge. this data() method uses data attributes on the DOM nodes
+        // to do this differently costs a lot more code. c'est la vie
+        ,
+        data: function (k, v) {
+            var el = this[0],
+                uid, o, m
+            if (typeof v === 'undefined') {
+                if (!el) return null
+                o = data(el)
+                if (typeof k === 'undefined') {
+                    each(el.attributes, function (a) {
+                        (m = ('' + a.name).match(dattr)) && (o[camelize(m[1])] = dataValue(a.value))
+                    })
+                    return o
+                } else {
+                    if (typeof o[k] === 'undefined') o[k] = dataValue(this.attr('data-' + decamelize(k)))
+                    return o[k]
+                }
+            } else {
+                return this.each(function (el) {
+                    data(el)[k] = v
+                })
+            }
+        }
+
+        // DOM detachment & related
+        ,
+        remove: function () {
+            this.deepEach(clearData)
+
+            return this.each(function (el) {
+                el[parentNode] && el[parentNode].removeChild(el)
+            })
+        }
+
+        ,
+        empty: function () {
+            return this.each(function (el) {
+                deepEach(el.childNodes, clearData)
+
+                while (el.firstChild) {
+                    el.removeChild(el.firstChild)
+                }
+            })
+        }
+
+        ,
+        detach: function () {
+            return this.map(function (el) {
+                return el[parentNode].removeChild(el)
+            })
+        }
+
+        // who uses a mouse anyway? oh right.
+        ,
+        scrollTop: function (y) {
+            return scroll.call(this, null, y, 'y')
+        }
+
+        ,
+        scrollLeft: function (x) {
+            return scroll.call(this, x, null, 'x')
+        }
+
+    }
+
+    function normalize(node) {
+        return typeof node == 'string' ? $.create(node) : isNode(node) ? [node] : node // assume [nodes]
+    }
+
+    function scroll(x, y, type) {
+        var el = this[0]
+        if (!el) return this
+        if (x == null && y == null) {
+            return (isBody(el) ? getWindowScroll() : {
+                x: el.scrollLeft,
+                y: el.scrollTop
+            })[type]
+        }
+        if (isBody(el)) {
+            win.scrollTo(x, y)
+        } else {
+            x != null && (el.scrollLeft = x)
+            y != null && (el.scrollTop = y)
+        }
+        return this
+    }
+
+    function isBody(element) {
+        return element === win || (/^(?:body|html)$/i).test(element.tagName)
+    }
+
+    function getWindowScroll() {
+        return {
+            x: win.pageXOffset || html.scrollLeft,
+            y: win.pageYOffset || html.scrollTop
+        }
+    }
+
+    function $(els, host) {
+        return new $D(els, host)
+    }
+
+    $.setQueryEngine = function (q) {
+        query = q;
+        delete $.setQueryEngine
+    }
+
+    $.aug = function (o, target) {
+        // for those standalone $ users. this love is for you.
+        for (var k in o) {
+            o.hasOwnProperty(k) && ((target || $D.prototype)[k] = o[k])
+        }
+    }
+
+    $.create = function (node) {
+        // hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh
+        return typeof node == 'string' && node !== '' ?
+        function () {
+            var tag = /^\s*<([^\s>]+)/.exec(node),
+                el = doc.createElement('div'),
+                els = [],
+                p = tag ? tagMap[tag[1].toLowerCase()] : null,
+                dep = p ? p[2] + 1 : 1,
+                ns = p && p[3],
+                pn = parentNode,
+                tb = features.autoTbody && p && p[0] == '<table>' && !(/<tbody/i).test(node)
+
+                el.innerHTML = p ? (p[0] + node + p[1]) : node
+            while (dep--) el = el.firstChild
+            // for IE NoScope, we may insert cruft at the begining just to get it to work
+            if (ns && el && el.nodeType !== 1) el = el.nextSibling
+            do {
+                // tbody special case for IE<8, creates tbody on any empty table
+                // we don't want it if we're just after a <thead>, <caption>, etc.
+                if ((!tag || el.nodeType == 1) && (!tb || el.tagName.toLowerCase() != 'tbody')) {
+                    els.push(el)
+                }
+            } while (el = el.nextSibling)
+            // IE < 9 gives us a parentNode which messes up insert() check for cloning
+            // `dep` > 1 can also cause problems with the insert() check (must do this last)
+            each(els, function (el) {
+                el[pn] && el[pn].removeChild(el)
+            })
+            return els
+
+        }() : isNode(node) ? [node.cloneNode(true)] : []
+    }
+
+    $.doc = function () {
+        var vp = $.viewport()
+        return {
+            width: Math.max(doc.body.scrollWidth, html.scrollWidth, vp.width),
+            height: Math.max(doc.body.scrollHeight, html.scrollHeight, vp.height)
+        }
+    }
+
+    $.firstChild = function (el) {
+        for (var c = el.childNodes, i = 0, j = (c && c.length) || 0, e; i < j; i++) {
+            if (c[i].nodeType === 1) e = c[j = i]
+        }
+        return e
+    }
+
+    $.viewport = function () {
+        return {
+            width: ie ? html.clientWidth : self.innerWidth,
+            height: ie ? html.clientHeight : self.innerHeight
+        }
+    }
+
+    $.isAncestor = 'compareDocumentPosition' in html ?
+    function (container, element) {
+        return (container.compareDocumentPosition(element) & 16) == 16
+    } : 'contains' in html ?
+    function (container, element) {
+        return container !== element && container.contains(element);
+    } : function (container, element) {
+        while (element = element[parentNode]) {
+            if (element === container) {
+                return true
+            }
+        }
+        return false
+    }
+
+	if (context['Leta']) {
+		context['Leta'].extend({
+			$dom: $
+		});
+	} else {
+		context.$dom = $;
 	}
-
-	function _splitSelector (selector) {
-		var parts, result = [];
-		if (Leta.isString(selector)) {
-			while (!!selector) {
-				parts = selector.match(quickReg);
-				if (!parts[0]) {
-					break;
-				}
-				result.push({
-					'symbol': parts[1],
-					'tag': (parts[2] || '').toLowerCase(),
-					'id': parts[3],
-					'classes': (parts[4] ? parts[4].split('.') : undefined)
-				});
-
-				selector = selector.substring(parts[0].length);
-			}
-		}
-		return result;
-	}
-
-	function _hasClasses (el, classes) {
-		if (el.className == '' || !el.className) {
-			return false;
-		}
-		for (var i = 0; i < classes.length; i ++) {
-			if (!_hasClass(el, classes[i])) {
-				return false;
-			}
-		}
-		return true;
-	}
-
-	function _hasClass (el, className) {
-		return (' ' + el.className + ' ').indexOf(' ' + className + ' ') > -1;
-	}
-	function _addClass (el, className) {
-		if (!_hasClass(el, className)) {
-			el.className += ' ' + className;
-		}
-		return el;
-	}
-	function _removeClass (el, className) {
-		if (_hasClass(el, className)) {
-			el.className = el.className.replace(new RegExp('(^|\\s)' + className + '(\\s|$)'), ' ').replace(/\s$/, '');
-		}
-		return el;
-	}
-
-	function _match (el, condition) {
-		if (!condition) {
-			return true;
-		}
-		var tag = condition.tag,
-			id = condition.id,
-			classes = condition['classes'];
-
-		return (el.nodeType === 1)
-				&& !(tag && tag != el.tagName.toLowerCase())
-				&& !(id && id != el.id)
-				&& !(classes && !_hasClasses(el, classes));
-	}
-	// 是否有祖先关系
-	function _isDescendant (el, ancestor) {
-		while ((el = el.parentNode) && el != ancestor) {
-			return el !== null;
-		}
-	}
-
-	function _descendants (selector, referEl) {
-		if (referEl.querySelectorAll) {
-			return referEl.querySelectorAll(selector, referEl);
-		}
-		var results = [],
-			elements = [referEl],
-			selectorSplit = _splitSelector(selector),
-			els;
-
-		function _contains(o) {
-			for (var i = results.length; i -- ; ) {
-				if (results[i] === o) {
-					return true;
-				}
-			}
-			return false;
-		}
-		function __find (el, condition) {
-			var c, ret = condition.id ? ((c = ((el && el.ownerDocument) || doc).getElementById(condition.id)) && _isDescendant(c, el)) ? [c] : [] : __toArray(el.getElementsByTagName(condition.tag || '*'));
-			c = ret.length;
-
-			if (c > 0 && (condition.id || condition.classes)) {
-				while (c--) {
-					if (!_match(ret[c], condition)) {
-						ret.splice(c, 1);
-					}
-				}
-			}
-			return ret;
-		}
-		function __toArray(nodes) {
-			try {
-				return Array.prototype.slice.call(nodes, 0);
-			} catch (e) {
-				var arr = [];
-				for (var i = 0, l = nodes.length; i < l; i ++) {
-					arr.push(nodes[i]);
-				}
-				return arr;
-			}
-		}
-
-		if (!selectorSplit.length) {
-			selectorSplit = [{}];
-		}
-
-		for (var i = 0, l = selectorSplit.length; i < l; i ++) {
-			var splitPart = selectorSplit[i];
-			for (j = 0, lj = elements.length; j < lj; j ++) {
-				var el = elements[j];
-	
-				// 支持 >+~
-				switch (splitPart.symbol) {
-					case '>':
-						// 寻找儿子节点
-						var children = el.childNodes; 
-						for (var k = 0, lk = children.length; k < lk; k ++) { console.log(splitPart, children[k])
-							_match(children[k], splitPart) && results.push(children[k]);
-						}
-						break;
-
-					// 匹配所有弟弟（向后查找）
-					case '~':
-						while (el = el.nextSibling) {
-							if (_match(el, splitPart)) {
-								if (_contains(el)) {
-									break;
-								}
-								results.push(el);
-							}
-						}
-						break;
-
-					// 匹配相邻弟弟
-					case '+':
-						while((el = el.nextSibling) && el.nodeType != 1) {} // 排除非htmlElement
-						el && _match(el, splitPart) && results.push(el);
-						break;
-
-					default: 
-						els = __find(el, splitPart);
-						if (i > 0) {
-							// 有多级选择器
-							for (var m = 0, lm = els.length; m < lm; m ++) {
-								!_contains(els[m]) && results.push(els[m])
-							}
-						} else {
-							results = results.concat(els);
-						}
-						break;
-				}
-			}
-
-			if (!results.length) {
-				return [];
-			}
-			// 迭代查找
-			elements = results.splice(0, results.length);
-		}
-
-		return elements;
-	}
-
-	// 查找满足条件的第一个
-	function _find (el, prop, selector) {
-		var condition = _splitSelector(selector)[0];
-		while (el && (!_match(el, condition)) && (el = el[prop])) {} // 排除不符合条件的
-		return el;
-	} 
-	function _findNext(el, prop, selector) {
-		return _find(el[prop], prop, selector);
-	}
-	
-
-
-	/* public methods */
-	dom.create = function (selector, props) {
-		var s = _splitSelector(selector)[0],
-			tag = s.tag;
-		if (!tag) {
-			return null;
-		}
-		var e = doc.createElement(tag);
-		if (!!s.id) {
-			e.id = s.id;
-		}
-		if (!!s['classes']) {
-			e.className = s['classes'].join(' ');
-		}
-		
-		if (Leta.isPlainObject(props)) {
-			for (var key in props) {
-				e.setAttribute(key, props[key]);
-			}
-		}
-
-		return e;
-	};
-
-	dom.ready = function (cb) {
-		_readyCallbacks.push(cb);
-	};
-
-
-	/* merge package[event] to package[dom] */
-	var mergeEvents = {
-		on: Leta.event.on,
-		addEvent: Leta.event.on,
-		bind: Leta.event.on,
-		listen: Leta.event.on,
-		delegate: Leta.event.on,
-
-		off: Leta.event.off,
-		removeEvent: Leta.event.off,
-		unbind: Leta.event.off,
-		unlisten: Leta.event.off,
-		undelegate: Leta.event.off,
-
-		emit: Leta.event.fire,
-		trigger: Leta.event.fire
-	};
-	var shortcuts = [
-		'blur',
-		'change',
-		'click',
-		'dblclick',
-		'error',
-		'focus',
-		'focusin',
-		'focusout',
-		'keydown',
-		'keypress',
-		'keyup',
-		'load',
-		'mousedown',
-		'mouseenter',
-		'mouseleave',
-		'mouseout',
-		'mouseover',
-		'mouseup',
-		'mousemove',
-		'resize',
-		'scroll',
-		'select',
-		'submit',
-		'unload'
-	];
-	for (var i = 0; i < shortcuts.length; i ++) {
-		var o = {};
-		o[shortcuts[i]] = function (i) {
-			return function () {
-				var args = Array.prototype.slice.call(arguments, 0); 
-				// args[0] htmlElment
-				args.splice((Leta.isString(args[1]) ? 2 : 1), 0, shortcuts[i]);
-				return Leta.event.on.apply(this, args);
-			}
-		}(i);
-		Leta.extend(mergeEvents, o);
-	}
-
-	Leta.extend(dom, mergeEvents);
-
-	/* merge dom selector */
-	var domSelector = {
-		get: function (selector, _doc) {
-			return _descendants(selector, (_doc || doc));	 
-		},
-		one: function (selector, _doc) {
-			return _descendants(selector, (_doc || doc))[0];	 
-		},
-		// 子孙
-		descendants: _descendants,
-		// 祖先
-		ancestor: function (el, selector) {
-			return _findNext(el, 'parentNode', selector);
-		},
-		// 毗邻弟弟
-		next: function (el, selector) {
-			return _findNext(el, 'nextSibling', selector);	  
-		},
-		// 毗邻哥哥
-		prev:function (el, selector) {
-			return _findNext(el, 'previousSibling', selector);
-		},
-		// 最大的哥哥
-		first: function (el, selector) {
-			el = el.parentNode.firstChild;
-			return _find(el, 'nextSibling', selector);
-		},
-		// 最小的弟弟
-		last: function (el, selector) {
-			el = el.parentNode.lastChild;
-			return _find(el, 'previousSibling', selector);
-		}
-	};
-	Leta.extend(dom, domSelector);	
-
-
-	/* merge style setter and getter */
-	var byTag = 'getElementsByTagName',
-		isIE = /msie/i.test(navigator.userAgent);
-
-	var featureDetect = function () {
-		var e = doc.createElement('p');
-		e.innerHTML = '<a href="#x">x</a><table style="float:left"></table>';
-
-		return {
-			isHrefExtended: e[byTag]('a')[0]['getAttribute']('href') != '#x', // ie < 9
-			isAutoTbody: e[byTag]('tbody').length != 0, // ie < 9
-			computedStyle: doc.defaultView && doc.defaultView.getComputedStyle,
-			cssFloat: e[byTag]('table')[0].style.styleFloat ? 'styleFloat' : 'cssFloat',
-			transform: function () {
-				var props = ['webkitTransform', 'MozTransform', 'OTransform', 'msTransform', 'Transform'], i
-            	  for (i = 0; i < props.length; i++) {
-           	     if (props[i] in e.style) return props[i]
-          	    }	
-			}()
-		};
-
-	}();
-
-  function styleProperty(p) {
-      (p == 'transform' && (p = featureDetect.transform)) ||
-        (/^transform-?[Oo]rigin$/.test(p) && (p = featureDetect.transform + "Origin")) ||
-        (p == 'float' && (p = featureDetect.cssFloat))
-      return p ? camelize(p) : null
-  }
-  function camelize(s) {
-    return s.replace(/-(.)/g, function (m, m1) {
-      return m1.toUpperCase()
-    })
-  }
-  
-	
-
-	var getStyle = featureDetect.computedStyle ? 
-		function (el, prop) {
-			var value = null,
-				computed = doc.defaultView.getComputedStyle(el, '');
-			computed && (value = computed[prop]);
-
-			return el.style[prop] || value;
-		} : 
-
-		(isIE && docEl.currentStyle) ?
-		function (el, prop) {
-			if (prop == 'opacity') {
-				var val = 100;
-				try {
-					val = el.filters['DXImageTransform.Microsoft.Alpha'].opacity;
-				} catch (err1) {
-					try {
-						val = el.filters['alpha'].opacity;
-					} catch (err2) {}
-				}
-				return val /100;
-			}
-
-			var value = el.currentStyle ? el.currentStyle[prop] null;
-			return el.style[prop] || value;
-		} : 
-		function (el, prop) {
-			return el.style[prop];
-		};
-
-	getStyle.viewport = function () {
-		return {
-			width: isIE ? docEl.clientWidth : win.innerWdith,
-			height: isIE ? docEl.clientHeight : win.innerHeight
-		};
-	};
-	getStyle.doc = function () {
-		var vp = getStyle.viewport();
-		return {
-			width: Math.max(doc.body.scrollWidth, docEl.scrollWdith, vp.width),
-			height: Math.max(doc.body.scrollHeight, docEl.scrollHeight, vp.height)
-		};
-	};
-
-	var styleGS = {
-		getStyle: function (el, prop) {
-			if (!el) {
-				return null;
-			}
-			if (el === doc || el === win) {
-				var vp = (el === doc) ? getStyle.doc() : getStyle.viewport();
-				return prop == 'width' ? vp.width : prop == 'height' ? vp.height : '';
-			}
-			return (prop = styleProperty(prop)) ? getStyle(el, prop) : null;
-		},
-		setStyle: function (el, prop, value) {
-				  
-		},
-		css: function (el, prop, value) {
-				 
-		}
-	}
-
- 	Leta.extend({dom: dom});
-	_init();
-
- })(window)
+    return $;
+})();

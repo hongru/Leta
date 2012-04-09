@@ -1,5 +1,5 @@
 
-Leta.register('.string', function (L) {
+Leta.register('.str', function (L) {
 	// escape
     this.escape = function(string) {
         return (''+string).replace(/&/g, '&amp;')

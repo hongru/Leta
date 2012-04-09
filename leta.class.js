@@ -45,26 +45,26 @@
 			_constructor = isFunction(o) ? o : this,
 			_methods = isFunction(o) ? {} : o;
 
-		function Class () {
+		function classFn () {
 			if (!!this.initialize) {
 				this.initialize.apply(this, arguments);
 			} else {
-				(!!fromSub || isFunction(o)) && _super.apply(this, arguments);
+				!!fromSub || isFunction(o) && _super.apply(this, arguments);
 				_constructor.apply(this, arguments);
 			}
 		}
 
-		Class.methods = function (o) {
+		classFn.methods = function (o) {
 			process(prototype, o, _super);
-			Class.prototype = prototype;
+			classFn.prototype = prototype;
 			return this;
 		};
 		
-		Class.methods.call(Class, _methods).prototype.constructor = Class;
+		classFn.methods.call(classFn, _methods).prototype.constructor = classFn;
 
-		Class.extend = arguments.callee;
+		classFn.extend = arguments.callee;
 
-		Class.prototype.implement = Class.statics = function (o, optFn) {
+		classFn.prototype.implement = Class.statics = function (o, optFn) {
 			o = L.toType(o) === 'string' ? (function () {
 						var obj = {};
 						obj[o] = optFn;
@@ -75,7 +75,7 @@
 			return this;
 		}
 
-		return Class;
+		return classFn;
 
 	}
 
