@@ -1,5 +1,5 @@
-
 Leta.register('.str', function (L) {
+    var $ = this;
 	// escape
     this.escape = function(string) {
         return (''+string).replace(/&/g, '&amp;')
