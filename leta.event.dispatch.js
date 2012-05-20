@@ -6,13 +6,13 @@
 ;(function (win, undefined) {
     var $E = Leta.event;
     
-    function bubbleTo (el, key) {
+    function bubbleTo (el, endEl, key) {
         if (!el || (el && el == document)) {
             return null;
-        } else if (el.getAttribute && el.getAttribute(key)) {
+        } else if (el == endEl || (el.getAttribute && el.getAttribute(key))) {
             return el;
         } else if (el.parentNode) {
-            return bubbleTo(el.parentNode, key);
+            return bubbleTo(el.parentNode, endEl, key);
         } else {
             return null;
         }
@@ -24,7 +24,7 @@
             key = 'data-cmd';
         }
         $E.on(el, type, function (e) {
-            var tar = bubbleTo(e.target, key); 
+            var tar = bubbleTo(e.target, el, key); 
             if (tar) {
                 var cmd = tar.getAttribute(key);
                 distributor[cmd] && distributor[cmd].call && distributor[cmd].call(tar, e, tar);
