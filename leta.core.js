@@ -131,9 +131,10 @@
 	
     /**
      * Method 使用模块的主函数
-     * @param (String or Array) 要使用的模块名
-     * @param (Function) *optional 加载模块后的回调函数
-     * @param (Object) *optional 回调绑定对象
+     * @function
+     * @param {String} moduleName 要使用的模块名,也可以是一个Array
+     * @param {Function} callback *optional 加载模块后的回调函数
+     * @param {Object} context *optional 回调绑定对象
      * @return undefined
      * xhr同步的方式由于http请求，暂不能支持跨域模块loader
      * 默认register为异步
@@ -234,10 +235,12 @@
 
         /**
          * Method 模块注册
-         * @param (String or Object) 注册的模块名或者对象字面量
-         * @param (Number) *optional 异步等待时间
-         * @param (String or Array) 注册模块对应的url地址
-         * @return (Object) 注册模块的相关信息对象字面量
+         * @function
+         * @param {String} name 注册的模块名或者对象字面量
+         * @param {Boolean} isAsyn 是否异步
+         * @param {Number} asyncWait 异步等待时间
+         * @param {String} urls 注册模块对应的url地址
+         * @return {Object} 注册模块的相关信息对象字面量
         **/
         register : function(name, isAsyn, asyncWait, urls) {
             var reg;
@@ -445,9 +448,9 @@
     
     /**
      * extend [Method]
-	 * @param {Object} 目标对象
-	 * @param {Object} 源对象
-	 * @param {boolean} 是否overwrite
+	 * @param {Object} target 目标对象
+	 * @param {Object} source 源对象
+	 * @param {Boolean} isOverwrite 是否overwrite
 	 * 默认第一个｛Object｝类型的参数为target， 其余的都为source，第一个｛boolean｝类型的参数为isOverwrite
      * 当只有一个｛Object｝类型参数时，target为Leta
      */

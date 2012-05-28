@@ -4,7 +4,7 @@
         doc = win.document,
         html = doc.documentElement,
         parentNode = 'parentNode',
-        query = null,
+        query = context['Leta'] && context['Leta']['$qsa'] ? context['Leta']['$qsa'] : null,
         specialAttributes = /^(checked|value|selected)$/i,
         specialTags = /^(select|fieldset|table|tbody|tfoot|td|tr|colgroup)$/i // tags that we have trouble inserting *into*
         ,
@@ -464,14 +464,16 @@
         ,
         show: function (type) {
             return this.each(function (el) {
-                el.style.display = type || ''
+                el.style.display = type || el.getAttribute('data-old-display') || '';
             })
         }
 
         ,
         hide: function () {
             return this.each(function (el) {
-                el.style.display = 'none'
+                // save old display rules
+                el.setAttribute('data-old-display', getStyle(el, 'display'));
+                el.style.display = 'none';
             })
         }
 
@@ -773,6 +775,9 @@
         return new $D(els, host)
     }
 
+    // for prototype extend
+    $.proto = $D.prototype;
+
     $.setQueryEngine = function (q) {
         query = q;
         delete $.setQueryEngine
@@ -856,12 +861,13 @@
         return false
     }
 
-	if (context['Leta']) {
-		context['Leta'].extend({
-			$dom: $
-		});
-	} else {
-		context.$dom = $;
-	}
+    if (context['Leta']) {
+        context['Leta'].extend({
+            $dom: $
+        });
+    } else {
+        context.$dom = $;
+    }
+    
     return $;
 })();
