@@ -7,7 +7,7 @@
 	var context = this,
         L = this['Leta'],
 		$name = L['$name'],
-		fnTest = /'leta'/.test(function () { leta }) ? /\b_super\b/ : /.*/,
+		fnTest = /leta/.test(function () { leta }) ? /\b_super\b/ : /.*/,
 		isFunction  = function (o) {
 			return (L.toType(o) == 'function' && o.apply && o.call);
 		};
