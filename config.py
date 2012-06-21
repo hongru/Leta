@@ -87,6 +87,10 @@ rules = {
     'leta.0.3': {
         'source' : './tools/leta.0.3.qzmin',
 		'target' : './leta.0.3.js',
+    },
+    'leta.0.4': {
+        'source' : './tools/leta.0.4.qzmin',
+		'target' : './leta.0.4.js'
     }
 }
 
@@ -94,7 +98,7 @@ rules = {
 # 编译模式，
 # -default 必须，为默认编译模式，对按照后面数组规则顺序进行编译
 modes = {
-	'-default': ['leta.0.1', 'leta.0.2', 'leta.0.3'],
+	'-default': ['leta.0.4'],
 	#'-dev': [],
 	#'-debug': [],
 	#'-test': [],

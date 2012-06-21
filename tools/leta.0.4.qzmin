@@ -1,0 +1,30 @@
+{
+	projects: [
+		{
+			name: "Compile Test",
+			target: "./combined/leta.0.4.js",
+			include: [
+				"../leta.core.js",
+				"../leta.class.js",
+				"../leta.array.js",
+				"../leta.object.js",
+				"../leta.string.js",
+				"../leta.browser.js",
+				"../leta.selector.js",
+				"../leta.dom.js",
+				"../leta.event.js",
+                "../leta.event.dispatch.js",
+                "../leta.attachevent.js",
+				"../leta.fx.js",
+				"../leta.ajax.js",
+				"../leta.util.js",
+				"../leta.easings.js",
+				"../leta.$.js"
+			]
+		}
+	],
+	level: 0,
+	shrink: false,
+	encode: "utf-8",
+	comment: "Tecnent Web Tech Team"
+}
