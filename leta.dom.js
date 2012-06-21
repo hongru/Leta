@@ -868,6 +868,6 @@
     } else {
         context.$dom = $;
     }
-    
+
     return $;
 })();

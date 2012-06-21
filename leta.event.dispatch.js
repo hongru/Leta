@@ -5,7 +5,7 @@
 
 ;(function (win, undefined) {
     var $E = Leta.event;
-    
+
     function bubbleTo (el, endEl, key) {
         if (!el || (el && el == document)) {
             return null;

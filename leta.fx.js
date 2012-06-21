@@ -85,8 +85,8 @@
     function parseTransform(style, base) {
         var values = {}, m;
         if (m = style.match(rotate)) values.rotate = by(m[1], base ? base.rotate: null); 
-		if (m = style.match(scale)) values.scale = by(m[1], base ? base.scale: null); 
-		if (m = style.match(skew)) {
+        if (m = style.match(scale)) values.scale = by(m[1], base ? base.scale: null); 
+        if (m = style.match(skew)) {
             values.skewx = by(m[1], base ? base.skewx: null);
             values.skewy = by(m[3], base ? base.skewy: null);
         }

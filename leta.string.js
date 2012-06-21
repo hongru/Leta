@@ -1,6 +1,6 @@
 Leta.register('.str', function (L) {
     var $ = this;
-	// escape
+    // escape
     this.escape = function(string) {
         return (''+string).replace(/&/g, '&amp;')
                           .replace(/</g, '&lt;')
@@ -19,7 +19,7 @@ Leta.register('.str', function (L) {
     var unescape = function(code) {
         return code.replace(/\\\\/g, '\\').replace(/\\'/g, "'");
     };
- 
+
     this.template = function (str, data) {
         var c  = $.templateSettings;
         var tmpl = 'var __p=[],print=function(){__p.push.apply(__p,arguments);};' +
@@ -39,10 +39,10 @@ Leta.register('.str', function (L) {
                 .replace(/\n/g, '\\n')
                 .replace(/\t/g, '\\t')
                 + "');}return __p.join('');";
-                
+
         var func = new Function('obj', '$', tmpl);
         if (data) return func(data, $);
-        
+
         return function (data) {
             return func.call(this, data, $);
         };

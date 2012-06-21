@@ -2,7 +2,7 @@
  * leta.browser.js
  * @require [leta.core]
  */
- 
+
 ;(function (Leta, undefined) {
 
     var BrowserDetect = {
@@ -121,7 +121,7 @@
         }]
     };
     BrowserDetect.init();    
-    
+
     Leta.extend({
         browser: {
             name: BrowserDetect.browser,
