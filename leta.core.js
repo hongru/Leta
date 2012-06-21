@@ -12,7 +12,7 @@
         self = this,
         __INFO__ = {
             '$name': 'Leta',
-            '$version': 0.1,
+            '$version': 0.4,
             '$root': root    
         },
         $LETA$ = -1;
